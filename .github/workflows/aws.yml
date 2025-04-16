@@ -3,6 +3,11 @@ name: Deploy to Amazon EKS with Helm
 on:
   push:
     branches: ["main"]
+    paths-ignore:
+      - 'frontend/**'
+      - 'docker/**'
+      - 'kubernetes/**'
+
 
 env:
   AWS_REGION: MY_AWS_REGION                   # e.g., us-west-1
