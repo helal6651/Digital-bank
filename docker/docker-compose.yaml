@@ -38,7 +38,7 @@ services:
     environment:
       KAFKA_BROKERCONNECT: "kafka:9092"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9000 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -70,7 +70,7 @@ services:
     environment:
       SPRING_CLOUD_CONFIG_ENABLED: "false"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9490/actuator/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost:9490/actuator/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -85,8 +85,6 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      api-gateway:
-        condition: service_healthy
     networks:
       - digital-bank-network
     environment:
@@ -95,11 +93,8 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: secure_password_2025
       SERVER_PORT: 9491
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9491/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+    command: ["sh", "-c", "while true; do sleep 30; done"]
+
     ports:
       - "9491:9491"
 

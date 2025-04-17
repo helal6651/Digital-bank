@@ -12,7 +12,7 @@ configMapGenerator:
       - config.yaml
 
 images:
-  - name: bjitpdmad/bjit-digital-banking:api-gateway-latest
+  - name: bjitpdmad/api-gateway-service:latest
     newTag: latest
   - name: bjitpdmad/bjit-digital-banking:user-service-latest
     newTag: latest
