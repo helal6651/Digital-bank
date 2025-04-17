@@ -3,88 +3,105 @@ version: '3.8'
 services:
   kafka:
     image: bitnami/kafka:latest
+    pull_policy: missing
+    networks:
+      - digital-bank-network
     ports:
       - "9092:9092"
       - "9093:9093"
     environment:
       - KAFKA_CFG_PROCESS_ROLES=broker,controller
       - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093  # Use service name
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
       - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092  # Internal Docker network address
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - ALLOW_PLAINTEXT_LISTENER=yes
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --list --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - ./kafka_data:/bitnami/kafka
-    networks:
-      - digital-bank-network
 
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
+    pull_policy: missing
     depends_on:
       - kafka
+    networks:
+      - digital-bank-network
     ports:
       - "9000:9000"
     environment:
       KAFKA_BROKERCONNECT: "kafka:9092"
-    networks:
-      - digital-bank-network
-    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   postgres:
     image: postgres:latest
-    ports:
-      - "5432:5432"
+    pull_policy: missing
+    networks:
+      - digital-bank-network
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
+      POSTGRES_PASSWORD: secure_password_2025
       POSTGRES_DB: user-service-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api-gateway:
+    image: bjitpdmad/api-gateway-service:latest
+    pull_policy: missing
     networks:
       - digital-bank-network
-  
-  api-gateway:
-    image: api-gateway:latest
+    environment:
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9490/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     ports:
       - "9490:9490"
-    environment:
-      SERVER_PORT: 9490
-      SPRING_APPLICATION_NAME: ApiGateway
-      SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_ENABLED: "true"
-      SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_LOWER_CASE_SERVICE_ID: "true"
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY: DEBUG
-      LOGGING_LEVEL_REACTOR_NETTY_HTTP_CLIENT: DEBUG
-      SPRING_CLOUD_CONFIG_ENABLED: "false"
+
+  user-service:
+    image: bjitpdmad/user-service:latest
+    pull_policy: missing
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
     networks:
       - digital-bank-network
-  
-  user-service:
-    image: user-service:latest
-    depends_on:
-      - postgres
-      - kafka
-      - api-gateway
-    ports:
-      - "9491:9491"
     environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user-service-db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS: kafka:9092
-      SPRING_KAFKA_CONSUMER_BOOTSTRAP_SERVERS: kafka:9092
-      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
-      SPRING_KAFKA_PRODUCER_KEY_SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
-      SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
-      SPRING_APPLICATION_NAME: user-service
+      SPRING_DATASOURCE_PASSWORD: secure_password_2025
       SERVER_PORT: 9491
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_SHOW_SQL: "true"
-      SPRING_CLOUD_CONFIG_ENABLED: "false"
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-    networks:
-      - digital-bank-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9491/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ports:
+      - "9491:9491"
 
 networks:
   digital-bank-network:
