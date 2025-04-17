@@ -1,4 +1,4 @@
-name: Deploy to Amazon EKS with Helm
+name: Deploy to Amazon EKS with Helm (Auto-Configured)
 
 on:
   push:
@@ -8,19 +8,17 @@ on:
       - 'docker/**'
       - 'kubernetes/**'
 
-
 env:
-  AWS_REGION: MY_AWS_REGION                   # e.g., us-west-1
-  ECR_REPOSITORY: MY_ECR_REPOSITORY           # Your ECR repository name
-  EKS_CLUSTER_NAME: MY_EKS_CLUSTER            # EKS cluster name
+  AWS_REGION: MY_AWS_REGION
+  ECR_REPOSITORY: MY_ECR_REPOSITORY
+  EKS_CLUSTER_NAME: MY_EKS_CLUSTER
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  HELM_CHART_NAME: my-app                     # Your Helm chart directory name
   IMAGE_TAG: ${{ github.sha }}
-  KUBECONFIG_FILE: kubeconfig-${{ github.run_id }}  # Unique kubeconfig file per run
+  KUBECONFIG_FILE: kubeconfig-${{ github.run_id }}
 
 permissions:
   contents: read
-  id-token: write  # Required for OIDC authentication
+  id-token: write
 
 jobs:
   deploy:
@@ -32,6 +30,12 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Identify Changed Services
+      id: changed-services
+      run: |
+        CHANGED_SERVICES=$(git diff --name-only HEAD^ HEAD | grep '^services/' | cut -d'/' -f2 | uniq)
+        echo "changed_services=$CHANGED_SERVICES" >> $GITHUB_OUTPUT
+
     - name: Configure AWS Credentials (OIDC)
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -41,10 +45,14 @@ jobs:
     - name: Login to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build and Push Docker Image
+    - name: Build and Push Changed Services
       run: |
-        docker build --platform linux/amd64 -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
-        docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+        for SERVICE in ${{ steps.changed-services.outputs.changed_services }}; do
+          docker build --platform linux/amd64 \
+            -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}-$SERVICE \
+            -f services/$SERVICE/Dockerfile .
+          docker push ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}-$SERVICE
+        done
 
     - name: Set Up EKS Access
       run: |
@@ -56,28 +64,35 @@ jobs:
     - name: Install Helm
       uses: azure/setup-helm@v3
       with:
-        version: 'v3.13.2'  # Specify Helm version
+        version: 'v3.13.2'
 
-    - name: Create Helm Chart (if not exists)
+    - name: Auto-Create/Update Helm Charts
       run: |
-        if [ ! -d "./charts/${{ env.HELM_CHART_NAME }}" ]; then
-          helm create ./charts/${{ env.HELM_CHART_NAME }}
-        fi
+        for SERVICE in ${{ steps.changed-services.outputs.changed_services }}; do
+          # Create Helm chart if missing
+          if [ ! -d "./charts/$SERVICE" ]; then
+            helm create ./charts/$SERVICE
+            # Auto-inject rolling update strategy into deployment.yaml
+            sed -i '/^spec:/a \
+  strategy:\
+    type: RollingUpdate\
+    rollingUpdate:\
+      maxUnavailable: 0\
+      maxSurge: 1' ./charts/$SERVICE/templates/deployment.yaml
+          fi
+        done
 
-    - name: Package Helm Chart
+    - name: Deploy Changed Services
       run: |
-        helm dependency update ./charts/${{ env.HELM_CHART_NAME }}  # Update chart dependencies
-        helm package ./charts/${{ env.HELM_CHART_NAME }} -d ./charts  # Package chart
-
-    - name: Deploy Helm Chart
-      run: |
-        helm upgrade --install \
-          ${{ env.HELM_CHART_NAME }} \
-          ./charts/${{ env.HELM_CHART_NAME }} \
-          --namespace default \
-          --set image.repository=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }} \
-          --set image.tag=${{ env.IMAGE_TAG }} \
-          --atomic \  # Rollback on failure
-          --wait      # Wait for deployment to complete
+        for SERVICE in ${{ steps.changed-services.outputs.changed_services }}; do
+          helm upgrade --install \
+            $SERVICE \
+            ./charts/$SERVICE \
+            --namespace default \
+            --set image.repository=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }} \
+            --set image.tag=${{ env.IMAGE_TAG }}-$SERVICE \
+            --atomic \
+            --wait
+        done
       env:
         KUBECONFIG: ${{ env.KUBECONFIG_FILE }}

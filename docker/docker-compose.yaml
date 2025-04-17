@@ -17,6 +17,8 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
     volumes:
       - ./kafka_data:/bitnami/kafka
+    networks:
+      - digital-bank-network
 
   kafdrop:
     image: obsidiandynamics/kafdrop:latest
@@ -26,4 +28,64 @@ services:
       - "9000:9000"
     environment:
       KAFKA_BROKERCONNECT: "kafka:9092"
-    # Removed the schema registry command parameter
+    networks:
+      - digital-bank-network
+    
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: user-service-db
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - digital-bank-network
+  
+  api-gateway:
+    image: api-gateway:latest
+    ports:
+      - "9490:9490"
+    environment:
+      SERVER_PORT: 9490
+      SPRING_APPLICATION_NAME: ApiGateway
+      SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_ENABLED: "true"
+      SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_LOWER_CASE_SERVICE_ID: "true"
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY: DEBUG
+      LOGGING_LEVEL_REACTOR_NETTY_HTTP_CLIENT: DEBUG
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+    networks:
+      - digital-bank-network
+  
+  user-service:
+    image: user-service:latest
+    depends_on:
+      - postgres
+      - kafka
+      - api-gateway
+    ports:
+      - "9491:9491"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user-service-db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_CONSUMER_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
+      SPRING_KAFKA_PRODUCER_KEY_SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
+      SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
+      SPRING_APPLICATION_NAME: user-service
+      SERVER_PORT: 9491
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_CLOUD_CONFIG_ENABLED: "false"
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+    networks:
+      - digital-bank-network
+
+networks:
+  digital-bank-network:
+    driver: bridge
