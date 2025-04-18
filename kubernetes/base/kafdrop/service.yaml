@@ -4,7 +4,7 @@ metadata:
   name: kafdrop
   namespace: your-namespace  # Replace with your actual namespace if needed
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - port: 9000
       targetPort: 9000
