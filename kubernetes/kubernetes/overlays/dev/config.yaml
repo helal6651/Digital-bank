@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dev-config
+  namespace: your-namespace
+data:
+  ENV: development
+  DATABASE_URL: postgres://postgres:root@postgres:5432/user-service-db
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  API_GATEWAY_URL: http://api-gateway:9490
+  LOG_LEVEL: debug
