@@ -4,7 +4,7 @@ metadata:
   name: prod-config
   namespace: digital-bank
 data:
-  DATABASE_URL: "postgresql://postgres:root@postgres:5432/user-service-db"
+  DATABASE_URL: "postgresql://postgres:secure_password_2025@postgres:5432/user-service-db"
   KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
   SPRING_PROFILES_ACTIVE: "prod"
   LOGGING_LEVEL: "INFO"

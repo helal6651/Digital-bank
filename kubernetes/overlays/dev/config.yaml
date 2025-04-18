@@ -5,7 +5,7 @@ metadata:
   namespace: your-namespace
 data:
   ENV: development
-  DATABASE_URL: postgres://postgres:root@postgres:5432/user-service-db
+  DATABASE_URL: "postgresql://postgres:secure_password_2025@postgres:5432/user-service-db"
   KAFKA_BOOTSTRAP_SERVERS: kafka:9092
   API_GATEWAY_URL: http://api-gateway:9490
   LOG_LEVEL: debug

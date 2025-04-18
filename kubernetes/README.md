@@ -43,3 +43,33 @@ This project contains Kubernetes configurations for deploying a digital banking 
 - [Kubernetes Documentation](https://kubernetes.io/docs/home/)
 - [Kafka Documentation](https://kafka.apache.org/documentation/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+
+
+## Added by Matiul Alam
+
+# To create resources, go to the folder "Digital-bank\kubernetes\overlays\prod>" and then run the command
+
+   ```
+kubectl apply -k .
+   ```
+
+# To get the "user-service" URL and dynamic port from the namespace "digital-bank"
+
+
+   ```
+minikube service user-service -n digital-bank
+
+   ```
+# To see all the service list from the namespace "digital-bank"
+
+   ```
+kubectl get svc -n digital-bank
+
+   ```
+
+# To delete all the resources from the namespace "digital-bank"
+
+   ```
+kubectl delete all --all -n digital-bank
+
+   ```

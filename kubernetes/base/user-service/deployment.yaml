@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: bjitpdmad/bjit-digital-banking:user-service-latest
+          image: bjitpdmad/user-service:latest
           ports:
             - containerPort: 9491
           env:
@@ -25,7 +25,7 @@ spec:
             - name: SPRING_DATASOURCE_USERNAME
               value: postgres
             - name: SPRING_DATASOURCE_PASSWORD
-              value: root
+              value: secure_password_2025
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: kafka:9092
             - name: SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS
