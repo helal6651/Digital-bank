@@ -60,7 +60,14 @@ kubectl apply -k .
 minikube service user-service -n digital-bank
 
    ```
-# To see all the service list from the namespace "digital-bank"
+
+# To see all the pods  from the namespace "digital-bank"
+
+   ```
+kubectl get pods -A
+
+   ```
+# To see all the services from the namespace "digital-bank"
 
    ```
 kubectl get svc -n digital-bank
