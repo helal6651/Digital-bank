@@ -13,7 +13,7 @@ configMapGenerator:
 
 images:
   - name: bjitpdmad/api-gateway-service:latest
-    newTag: latestls
+    newTag: latest
 
   - name: bjitpdmad/bjit-digital-banking:user-service-latest
     newTag: latest
