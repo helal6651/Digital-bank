@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kafdrop
-  namespace: your-namespace  # Replace with your actual namespace if needed
+  namespace: digital-bank  # Replace with your actual namespace if needed
 spec:
   type: LoadBalancer
   ports:
