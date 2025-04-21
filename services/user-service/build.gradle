@@ -31,7 +31,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.cloud:spring-cloud-starter-config'
-	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 	implementation group: 'javax.validation', name: 'validation-api', version: '2.0.0.Final'
 	implementation group: 'org.springframework.boot', name: 'spring-boot-starter-validation', version: '3.4.1'
 	implementation group: 'com.google.code.gson', name: 'gson', version: '2.11.0'
@@ -54,4 +53,11 @@ dependencyManagement {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+bootJar {
+	enabled = true
+}
+
+tasks.named('bootBuildImage') {
+	imageName = "bjitpdmad/user-service:latest"
 }

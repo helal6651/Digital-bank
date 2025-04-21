@@ -18,6 +18,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -38,8 +41,8 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private static final String[] AUTH_WHITELIST = {
-            "/v1/user/**"};
+    private static final String[] AUTH_WHITELIST = {"/v1/user/**", "/v1/auth/login", "/actuator/health"};
+
 
 
 
@@ -70,5 +73,17 @@ public class SecurityConfig {
                 .build ();
     }
 
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // configuration.addAllowedOrigin("http://example.com"); // Allow specific origin or use "*" for all
+        configuration.addAllowedOrigin("*");
+        configuration.addAllowedMethod("*"); // Allow all HTTP methods like GET, POST, PUT, DELETE, etc.
+        configuration.addAllowedHeader("*"); // Allow all headers
+        configuration.setAllowCredentials(true); // Allow credentials
 
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 }
