@@ -57,6 +57,18 @@ data:
     echo "Secret ID: $SECRET_ID" >> /vault/data/credentials.txt
     
     echo "Vault initialization completed successfully!"
+
+    KEY_PATH="secret/rsa-key-password"
+    openssl genrsa -out private.pem 2048
+    openssl rsa -in private.pem -pubout -out public.pem
+ 
+    # Read keys into variables
+    PRIVATE_KEY=$(cat private.pem)
+    PUBLIC_KEY=$(cat public.pem)
+    vault kv put "$KEY_PATH" private_key="$PRIVATE_KEY" public_key="$PUBLIC_KEY"
+ 
+    # Clean up local files
+    rm private.pem public.pem
     
     # Keep the container running
     tail -f /dev/null
