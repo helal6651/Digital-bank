@@ -10,19 +10,21 @@ import com.user_service.response.BaseResponse;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import javax.naming.AuthenticationException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.user_service.enums.ResponseType.ERROR;
 
@@ -114,42 +116,57 @@ public class RestExceptionHandler {
         return buildResponseEntity(message, ex.getErrorCode(), ex.getStatus(), ex);
     }
 
-    /**
-     * Handles validation exceptions for method arguments.
-     * <p>
-     * This method captures {@link MethodArgumentNotValidException} thrown when a method argument
-     * annotated with {@code @Valid} fails validation. It extracts the validation errors and returns
-     * them in a structured format.
-     * </p>
-     *
-     * @param ex the {@link MethodArgumentNotValidException} containing validation errors
-     * @return a {@link ResponseEntity} containing a map of field names and their corresponding error messages,
-     * with a {@link HttpStatus#BAD_REQUEST} status
-     */
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
+
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 errors.put(error.getField(), error.getDefaultMessage())
         );
+        BindingResult result = ex.getBindingResult();
+        List<FieldError> fieldErrors = result.getFieldErrors();
+        String errorCode = getErrorCode(fieldErrors);
+        String message = getMessage(errorCode);
 
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        return buildResponseEntity(Collections.singleton(message), errorCode, HttpStatus.BAD_REQUEST, ex, fieldErrors);
+
+      /*  // Extract field error messages for the response
+        Set<String> errorMessages = errors.values().stream().collect(Collectors.toSet());
+
+        BaseResponse response = BaseResponse.builder()
+                .responseType(ERROR)
+                .message(errorMessages)
+                .code(ErrorCode.INVALID_PASSWORD_PATTERN) // Assuming you have a VALIDATION_ERROR code
+                .build();
+
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);*/
     }
-
-    /**
-     * Handles exceptions when a required request part is missing.
-     * <p>
-     * This method captures {@link MissingServletRequestPartException} thrown when a required part of a multipart request is missing.
-     * It logs the missing part name and returns a {@link ResponseEntity} with a {@link HttpStatus#BAD_REQUEST} status and an error message.
-     * </p>
-     *
-     * @param ex the {@link MissingServletRequestPartException} containing details about the missing request part
-     * @return a {@link ResponseEntity} with a {@link HttpStatus#BAD_REQUEST} status and an error message indicating the missing part
-     */
     @ExceptionHandler(MissingServletRequestPartException.class)
     public ResponseEntity<?> handleMissingParams(MissingServletRequestPartException ex) {
         String name = ex.getRequestPartName();
         log.error("{} part is missing", name);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Request params '" + name + "' is missing");
+    }
+
+    private ResponseEntity<Object> buildResponseEntity(Collection<String> message, String errorCode,
+                                                       HttpStatus status, Exception ex, Object error) {
+        logger(message + " " + ex.getLocalizedMessage(), ex);
+        return new ResponseEntity<>(BaseResponse.builder()
+                .responseType(ERROR).message(message).code(errorCode).error(error).build(), status);
+    }
+    private String getErrorCode(List<FieldError> fieldErrors) {
+
+        String code = ErrorCode.INVALID_ARGUMENT;
+        return fieldErrors.stream().findFirst().map(DefaultMessageSourceResolvable::getDefaultMessage).orElse(code);
+    }
+
+    private String getMessage(String errorCode) {
+        try {
+            ErrorMessageInfo errorMessageInfo = logMessageConfig.getErrorMessageInfo(errorCode);
+            return errorMessageInfo.getMessageTemplate();
+        } catch (NoSuchElementException e) {
+            return errorCode;
+        }
     }
 }

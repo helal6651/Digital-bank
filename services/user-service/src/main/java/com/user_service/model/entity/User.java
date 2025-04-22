@@ -7,6 +7,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Builder
 @AllArgsConstructor
@@ -33,9 +35,6 @@ public class User {
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    @Column(name = "password_salt", nullable = false, length = 255)
-    private String passwordSalt;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
@@ -54,12 +53,11 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
-
-    // Optional constructor for initialization
-    public User(String username, String email, String passwordHash, String passwordSalt) {
-        this.username = username;
-        this.email = email;
-        this.passwordHash = passwordHash;
-        this.passwordSalt = passwordSalt;
-    }
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @JoinTable(
+            name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    private Set<Role> roles = new HashSet<>();
 }
