@@ -9,17 +9,22 @@ public class ApplicationConstants {
 
 	private ApplicationConstants() {
 	}
+	public static final String AUTHENTICATION_HEADER_NAME = "Authorization";
 
 	public static final String ROLE_PREFIX = "ROLE_";
 	public static final String VALID_EMAIL_ADDRESS_REGEX = "^.+@[^-\\.].*\\.[a-z]{2,}$";
 	public static final String VALID_PHONE_REGEX = "\\d{8,20}";
-	public static final String VALID_PASSWORD_REGEX = "(?=^.{8,}$)(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?!.*\\s)[0-9a-zA-Z!@#$%^&*()]*$";
-	public static final String VALID_IMAGE_URL_REGEX = "([^\\s]+(\\.(?i)(jpg|png|gif|bmp))$)";
-	public static final String VALID_VIDEO_URL_REGEX = "^.*\\.(avi|AVI|wmv|WMV|flv|FLV|mpg|MPG|mp4|MP4)$";
-	public static final String VALID_LP_PAGE_NAME = "^[a-zA-Z0-9_-]+( [a-zA-Z0-9_-]+)*$";
-	public static final String VALID_COMPANY_NAME = "^[a-zA-Z0-9_-]+( [a-zA-Z0-9_-]+)*$";
-
+	//public static final String VALID_PASSWORD_REGEX = "(?=^.{8,}$)(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?!.*\\s)[0-9a-zA-Z!@#$%^&*()]*$";
+	public static final String VALID_PASSWORD_REGEX = "^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?!.*\\s)[0-9a-zA-Z!@#$%^&*()]{8,}$";
+	public static final String DATA = "data";
+	public static final String TOKEN_TYPE = "token_type";
 	public static final String REQUEST_ID = "requestId";
+	public static final String PRIVATE_KEY = "private_key";
+	public static final String PUBLIC_KEY = "public_key";
+	public static final String VERSION = "version";
+	public static final String RSA_KEY_VERSION = "ras_key_version";
+	public static final String USER_ADD = "user:add";
+	public static final String TOKEN_RENEW = "token:renew";
 	public static final Long ZERO = 0L;
 	public static final Integer ONE = 1;
 	public static final Long ONE_LONG = 1L;

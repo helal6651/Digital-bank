@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -20,10 +21,9 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/v1/user")
+@RequestMapping("/v1/api/user")
 public class UserController {
     private final UserService userService;
-
     public UserController(UserService userService) {
         this.userService = userService;
     }
@@ -38,21 +38,15 @@ public class UserController {
                 .code(ApplicationConstants.SUCCESS_CODE)
                 .build();
     }
-
-    /// *    @PostMapping ("/login")
-//    public BaseResponse authenticate (@jakarta.validation.Valid @RequestBody LoginReqest authRequest) throws IOException {
-//        return BaseResponse.builder ()
-//                .responseType (ResponseType.RESULT)
-//                .message (Collections.singleton (HttpStatus.OK.getReasonPhrase ()))
-//               // .result (userService.authenticate (authRequest))
-//                .code (ApplicationConstants.SUCCESS_CODE)
-//                .build ();
-//    }*/
-    @GetMapping
-    public ResponseEntity<List<UserResponse>> readAllUsers() {
-        return ResponseEntity.ok(userService.readAllUsers());
+    @GetMapping("/show")
+    public BaseResponse getUserInfo() {
+        return BaseResponse.builder()
+                .message(Collections.singletonList(ApplicationConstants.OK_MSG))
+                .responseType(ResponseType.RESULT)
+                .result(userService.showUser())
+                .code(ApplicationConstants.SUCCESS_CODE)
+                .build();
     }
-
     @GetMapping("/list")
     public BaseResponse getAllUser(@PageableDefault(sort = {"createdAt"}, direction = Sort.Direction.DESC) Pageable pageable) {
         return BaseResponse.builder()

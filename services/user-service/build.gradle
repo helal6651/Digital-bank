@@ -42,6 +42,9 @@ dependencies {
 	implementation 'org.springframework.kafka:spring-kafka'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	implementation("org.springframework.boot:spring-boot-starter-security:3.4.4")
+	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server:3.4.4")
+	implementation("org.springframework.cloud:spring-cloud-starter-vault-config:4.2.1")
+	implementation("org.apache.commons:commons-lang3:3.0")
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

@@ -1,5 +1,7 @@
 package com.user_service.model.dto;
 
+import com.user_service.constants.ErrorCode;
+import com.user_service.validators.ValidPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -15,7 +17,7 @@ public class RegisterRequest {
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
+
+    @ValidPassword(message = ErrorCode.INVALID_PASSWORD_PATTERN)
     private String password;
 }
