@@ -16,7 +16,7 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "`User`") // Backticks for reserved keyword
+@Table(name = "`Users`") // Backticks for reserved keyword
 @Data
 
 public class User {

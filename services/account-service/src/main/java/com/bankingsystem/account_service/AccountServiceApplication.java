@@ -11,8 +11,8 @@ public class AccountServiceApplication {
 
 	public static void main(String[] args) {
 		User user = new User();
-		user.setFullName("John Doe");
-		System.out.println("User NameeeeeeeeeeeeTT: " + user.getFullName());
+		user.setUsername("John Doe");
+		System.out.println("User NameeeeeeeeeeeeTT: " + user.getUsername());
 		SpringApplication.run(AccountServiceApplication.class, args);
 	}
 

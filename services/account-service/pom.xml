@@ -109,9 +109,19 @@
 						<exclude>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
-							<version>${lombok.version}</version>
 						</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.4.0</version>
+				<configuration>
+					<to>
+						<!-- Replace this with your Docker Hub username and repository -->
+						<image>bjitpdmad/account-service</image>
+					</to>
 				</configuration>
 			</plugin>
 		</plugins>
