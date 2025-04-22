@@ -5,6 +5,7 @@ resources:
   - ../../base/api-gateway
   - ../../base/user-service
   - ../../base/namespace
+  - ../../base/vault
 
 configMapGenerator:
   - name: prod-config
@@ -22,6 +23,8 @@ images:
   - name: bitnami/kafka:latest
     newTag: latest
   - name: postgres:latest
+    newTag: latest
+  - name: vault:latest
     newTag: latest
 
 namespace: digital-bank

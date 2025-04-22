@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-init-script
+  namespace: digital-bank
+
+data:
+  init.sh: |
+    #!/bin/sh
+    
+    # Wait for Vault to be ready
+    until VAULT_TOKEN=dev-root-token vault status > /dev/null 2>&1; do
+      echo "Waiting for Vault to be ready..."
+      sleep 2
+    done
+    
+    echo "Vault is ready, initializing secrets..."
+    
+    # Set environment variables
+    export VAULT_ADDR='http://127.0.0.1:8200'
+    export VAULT_TOKEN='dev-root-token'
+    
+    # Enable secrets engines
+    vault secrets enable -path=secret kv-v2
+    
+    # Create database secrets
+    vault kv put secret/database/postgres username=postgres password=secure_password
+    
+    # Create application secrets
+    vault kv put secret/applications/user-service api-key=user-service-api-key jwt-secret=your-jwt-secret-here
+    
+    # Create an example policy
+    cat > /tmp/app-policy.hcl << EOF
+    path "secret/data/applications/user-service" {
+      capabilities = ["read"]
+    }
+    EOF
+    
+    # Create the policy
+    vault policy write app-policy /tmp/app-policy.hcl
+    
+    # Enable approle auth method
+    vault auth enable approle
+    
+    # Create an approle for your application
+    vault write auth/approle/role/user-service \
+        token_policies="app-policy" \
+        token_ttl=1h \
+        token_max_ttl=4h
+        
+    # Get role-id and secret-id for the app
+    ROLE_ID=$(vault read -field=role_id auth/approle/role/user-service/role-id)
+    SECRET_ID=$(vault write -f -field=secret_id auth/approle/role/user-service/secret-id)
+    
+    # Create a token and save credentials to a file for reference
+    echo "Role ID: $ROLE_ID" > /vault/data/credentials.txt
+    echo "Secret ID: $SECRET_ID" >> /vault/data/credentials.txt
+    
+    echo "Vault initialization completed successfully!"
+    
+    # Keep the container running
+    tail -f /dev/null

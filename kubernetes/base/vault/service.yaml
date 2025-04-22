@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault  # Changed from "postgres"
+  labels:
+    app: vault  # Correct label
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8200  # Use Vault's port
+      targetPort: 8200
+      protocol: TCP
+  selector:
+    app: vault  # Match Vault Deployment's labels
