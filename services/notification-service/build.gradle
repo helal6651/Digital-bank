@@ -28,3 +28,10 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+bootJar {
+	enabled = true
+}
+
+tasks.named('bootBuildImage') {
+	imageName = "bjitpdmad/user-service:latest"
+}

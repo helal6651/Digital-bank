@@ -39,7 +39,12 @@ public class BankingResponseUtil {
                         HttpStatus.BAD_REQUEST
                 );
 
-
+            case INVALID_PASSWORD_PATTERN:
+                throw new BankingApplicationException(
+                        authResultCode,
+                        ErrorCode.INVALID_PASSWORD_PATTERN,
+                        HttpStatus.BAD_REQUEST
+                );
             default:
                 // Default case for unhandled result codes
                 throw BankingApplicationException.builder ().resultCode (ResultCodeConstants.INTERNAL_SERVER_ERROR)

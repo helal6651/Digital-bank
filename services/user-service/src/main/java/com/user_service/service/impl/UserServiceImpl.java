@@ -5,7 +5,9 @@ import com.user_service.enums.UserStatus;
 import com.user_service.model.converter.UserConverter;
 import com.user_service.model.converter.response.PageableResponseConverter;
 import com.user_service.model.dto.RegisterRequest;
+import com.user_service.model.entity.Role;
 import com.user_service.model.entity.User;
+import com.user_service.repository.RoleRepository;
 import com.user_service.repository.UserRepository;
 import com.user_service.response.PageableResponseDTO;
 import com.user_service.response.user.UserResponse;
@@ -13,17 +15,15 @@ import com.user_service.service.UserService;
 import com.user_service.service.kafka.KafkaProducer;
 import org.springframework.data.domain.Pageable;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.user_service.response.BankingResponseUtil.throwApplicationException;
@@ -33,11 +33,15 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final KafkaProducer kafkaProducerService;
     private final UserConverter userConverter;
+    private final Argon2PasswordEncoder passwordEncoder;
+    private final RoleRepository roleRepository;
 
-    public UserServiceImpl(UserRepository userRepository, KafkaProducer kafkaProducerService, UserConverter userConverter) {
+    public UserServiceImpl(UserRepository userRepository, KafkaProducer kafkaProducerService, UserConverter userConverter, Argon2PasswordEncoder passwordEncoder, RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.kafkaProducerService = kafkaProducerService;
         this.userConverter = userConverter;
+        this.passwordEncoder = passwordEncoder;
+        this.roleRepository = roleRepository;
     }
 
     @Override
@@ -46,25 +50,26 @@ public class UserServiceImpl implements UserService {
         if (exisUser != null) {
             throwApplicationException(ResultCodeConstants.ALREADY_EXIST);
         }
-        // Generate salt and hash password
-        String salt = generateSalt();
-        String hashedPassword = hashPassword(request.getPassword(), salt);
+
+        String hashedPassword = passwordEncoder.encode(request.getPassword());
+      /*  Role userRole = roleRepository.findByName("ADMIN")
+                .orElseThrow(() -> new RuntimeException("Role not found"));*/
+
         User user = User.builder()
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .passwordHash(hashedPassword)
-                .passwordSalt(salt)
                 .status(UserStatus.ACTIVE)
                 .mfaEnabled(false)
+                .roles(new HashSet<>()) // Initialize the roles set
                 .build();
+      //  user.getRoles().add(userRole);
         userRepository.save(user);
         // Send notification email
-        LocalDateTime now = LocalDateTime.now();  // Get current date and time
-
+        LocalDateTime now = LocalDateTime.now(); // Get current date and time
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
         String formattedDateTime = now.format(formatter);
-        kafkaProducerService.sendMessage("user-registration-topic "+ request.getEmail()+", "+ formattedDateTime);
+        kafkaProducerService.sendMessage("user-registration-topic " + request.getEmail() + ", " + formattedDateTime);
 
         return UserResponse.builder()
                 .userName(user.getUsername())
@@ -89,26 +94,47 @@ public class UserServiceImpl implements UserService {
         ).collect(Collectors.toList());
     }
 
-    private String generateSalt() {
-        SecureRandom random = new SecureRandom();
-        byte[] salt = new byte[16];
-        random.nextBytes(salt);
-        return Base64.getEncoder().encodeToString(salt);
-    }
-
-    private String hashPassword(String password, String salt) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-512");
-            md.update(Base64.getDecoder().decode(salt));
-            byte[] hashedPassword = md.digest(password.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hashedPassword);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error hashing password", e);
-        }
-    }
-
     public PageableResponseDTO<UserResponse> getAllUser(Pageable pageable) {
         PageableResponseConverter<User, UserResponse> converter = new PageableResponseConverter<>();
         return converter.convert(userRepository.findAll(pageable), userConverter);
     }
+
+    @Override
+    public UserResponse showUser() {
+        Optional<User> user_ = getLoggedInUser();
+        if (user_.isPresent()) {
+
+            User user = user_.get();
+          /*  Set<String> roleNames = user.getRoles().stream()
+                    .map(Role::getName)
+                    .collect(Collectors.toSet());*/
+
+            return UserResponse.builder()
+                    .userId(user.getUserId())
+                    .userName(user.getUsername())
+                    .email(user.getEmail())
+                  //  .roles(roleNames)
+                    .status(user.getStatus())
+                    .mfaEnabled(user.getMfaEnabled())
+                    .createdAt(user.getCreatedAt())
+                    .lastLogin(user.getLastLogin())
+                    .build();
+        }
+        return null;
+    }
+
+    public Optional<User> getLoggedInUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+
+
+        // Get the username from the authentication
+        String username = authentication.getName();
+
+        // Fetch the user from the repository using the username
+        return userRepository.findByUsername(username);
+    }
+
 }

@@ -27,6 +27,10 @@
     "level": "ERROR",
     "message": "Invalid property key."
   },
+  "4006": {
+    "level": "ERROR",
+    "message": "Password length must be at least 8 characters long and must contain letter and number. Only !@#$%^&*() special characters are allowed"
+  },
   "5000": {
     "level": "ERROR",
     "message": "Internal server error."
