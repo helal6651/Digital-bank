@@ -17,7 +17,7 @@ import java.io.IOException;
  * </ul>
  */
 public interface AuthService {
-    AuthenticationResponseDTO authenticate (LoginRequest request) throws IOException;
+    AuthenticationResponseDTO authenticate (LoginRequest request) throws Exception;
 
    // AuthenticationResponseDTO renewToken (RefreshTokenRequest refreshTokenRequest) throws Exception;
 

@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,10 +28,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Custom JWT authentication filter for validating incoming requests.
@@ -136,7 +140,7 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
                 String requestId = UUID.randomUUID().toString();
                 request.setAttribute(ApplicationConstants.REQUEST_ID, requestId);
                 log.info("Request ID: {} -", requestId);
-                validateToken(token, requestId);
+                validateToken(token, requestId, request);
                // SecurityContextHolder.getContext().setAuthentication(token);
             } catch (Exception e) {
                 handleException(response, e);
@@ -163,7 +167,7 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
      * @param requestId the unique request ID for logging purposes
      * @throws Exception if the token is invalid or missing
      */
-    private void validateToken(String token, String requestId) throws Exception {
+    private void validateToken(String token, String requestId, HttpServletRequest request) throws Exception {
         Integer intVersion = userSecretsManager.getVaultKeyVersionFromToken(token);
         log.info("RSA key version in Custom JWT Authentication Filter: {}", intVersion);
         if (intVersion != null) {
@@ -186,12 +190,18 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
         if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             log.info("Setting authentication for user: {}", userName);
             UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(userName);
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+            Collection<? extends GrantedAuthority> authorities = Stream.concat(
+                    decodedJwt.getClaimAsStringList("authorities").stream()
+                            .map(SimpleGrantedAuthority::new),
+                    userDetails.getAuthorities().stream()
+            ).collect(Collectors.toSet());
+            UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     userDetails,
                     null,
                     userDetails.getAuthorities()
             );
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authentication);
 
         }
     }

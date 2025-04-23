@@ -45,7 +45,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/authenticate")
-    public BaseResponse authenticate(@Valid @RequestBody LoginRequest loginRequest) throws IOException {
+    public BaseResponse authenticate(@Valid @RequestBody LoginRequest loginRequest) throws Exception {
         return BaseResponse.builder()
                 .responseType(ResponseType.RESULT)
                 .message(Collections.singleton(HttpStatus.OK.getReasonPhrase()))
