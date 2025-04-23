@@ -6,6 +6,7 @@ resources:
   - ../../base/user-service
   - ../../base/front-end
   - ../../base/namespace
+  - ../../base/vault
 
 configMapGenerator:
   - name: prod-config
@@ -23,6 +24,8 @@ images:
   - name: bitnami/kafka:latest
     newTag: latest
   - name: postgres:latest
+    newTag: latest
+  - name: vault:latest
     newTag: latest
   - name: bjitpdmad/db-frontend:latest
     newTag: latest

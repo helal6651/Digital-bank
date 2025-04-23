@@ -1,12 +1,15 @@
 package com.user_service.response.user;
 
 import com.user_service.enums.UserStatus;
+import com.user_service.model.entity.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -17,7 +20,9 @@ public class UserResponse {
     private String userName;
     private String email;
     UserStatus status;
+    private Set<String> roles;
     private Boolean mfaEnabled;
     LocalDateTime createdAt;
     LocalDateTime lastLogin;
+
 }

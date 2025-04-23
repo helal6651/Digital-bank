@@ -10,4 +10,8 @@ public class KafkaConsumerService {
     public void listen(String message) {
         System.out.println("Received Message in group 'notification-group': " + message);
     }
+    @KafkaListener(topics = "account-created", groupId = "notification-group")
+    public void accountNotification(String message) {
+        System.out.println("Received Message for the topic 'account-created': " + message);
+    }
 }

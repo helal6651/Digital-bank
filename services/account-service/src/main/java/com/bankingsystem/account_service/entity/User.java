@@ -1,63 +1,65 @@
 package com.bankingsystem.account_service.entity;
 
+import com.bankingsystem.account_service.enums.UserStatus;
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Entity
-@Table(name = "Users")
-@Data // Generates getters, setters, equals, hashCode, toString, etc.
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
+@Entity
+@Table(name = "`Users`") // Backticks for reserved keyword
+@Data
+
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
-    private Long userId; // Maps to SERIAL PRIMARY KEY
+    @Column(name = "id")
+    private Long userId;
 
-    @Column(name = "full_name", nullable = false, length = 100)
-    private String fullName; // Full name of the user
+    @Column(unique = true, nullable = false, length = 50)
+    private String username;
 
-    @Column(name = "email", nullable = false, unique = true, length = 100)
-    private String email; // Email address (must be unique)
+    @Column(unique = true, nullable = false, length = 50)
+    private String email;
 
-    @Column(name = "phone_number", nullable = false, unique = true, length = 20)
-    private String phoneNumber; // Phone number (must be unique)
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
 
-    @Column(name = "date_of_birth", nullable = false)
-    private LocalDate dateOfBirth; // Date of birth of the user
+    @Column(name = "password_salt", nullable = false, length = 255)
+    private String passwordSalt;
 
-    @Column(name = "address")
-    private String address; // Optional address field
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status = UserStatus.ACTIVE;
 
-    @Column(name = "role", nullable = false, length = 20)
-    private String role = "user"; // Default role is 'user'
+    @Column(name = "mfa_enabled", nullable = false)
+    private Boolean mfaEnabled = false;
 
+    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    /**
-     * One-to-Many relationship: A user can have multiple accounts.
-     * This establishes the connection with the `Accounts` entity.
-     */
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<Account> accounts;
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
-    /**
-     * Pre-persist method to set default timestamps before saving a new record.
-     */
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+
+
+    // Optional constructor for initialization
+    public User(String username, String email, String passwordHash, String passwordSalt) {
+        this.username = username;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.passwordSalt = passwordSalt;
     }
-
-    // Getters and Setters are automatically handled by Lombok (@Data annotation)
 }

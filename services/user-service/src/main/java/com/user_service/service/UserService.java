@@ -9,6 +9,6 @@ import java.util.List;
 
 public interface  UserService {
     UserResponse register(RegisterRequest userDto);
-    List<UserResponse> readAllUsers();
     PageableResponseDTO<UserResponse> getAllUser(Pageable pageable);
+    UserResponse showUser();
 }

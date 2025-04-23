@@ -21,7 +21,7 @@ spec:
             - containerPort: 9491
           env:
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres:5432/user-service-db
+              value: jdbc:postgresql://postgres2:5432/user-service-db
             - name: SPRING_DATASOURCE_USERNAME
               value: postgres
             - name: SPRING_DATASOURCE_PASSWORD
@@ -50,3 +50,7 @@ spec:
               value: "false"
             - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
               value: org.hibernate.dialect.PostgreSQLDialect
+            - name: ROLE_ID
+              value: kdsfdsfdsf
+            - name: SECRET_ID
+              value: kdsfdsfdsf
