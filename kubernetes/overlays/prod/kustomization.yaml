@@ -4,6 +4,7 @@ resources:
   - ../../base/postgres
   - ../../base/api-gateway
   - ../../base/user-service
+  - ../../base/front-end
   - ../../base/namespace
 
 configMapGenerator:
@@ -22,6 +23,8 @@ images:
   - name: bitnami/kafka:latest
     newTag: latest
   - name: postgres:latest
+    newTag: latest
+  - name: bjitpdmad/db-frontend:latest
     newTag: latest
 
 namespace: digital-bank

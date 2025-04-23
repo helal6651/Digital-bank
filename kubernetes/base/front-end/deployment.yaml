@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: digital-banking-frontend
+  labels:
+    app: digital-banking-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: digital-banking-frontend
+  template:
+    metadata:
+      labels:
+        app: digital-banking-frontend
+    spec:
+      containers:
+        - name: digital-banking-frontend
+          image: bjitpdmad/db-frontend:latest
+          ports:
+            - containerPort: 80
