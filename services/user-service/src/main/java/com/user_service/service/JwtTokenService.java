@@ -9,6 +9,7 @@ import com.user_service.utils.ApplicationConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
@@ -19,8 +20,10 @@ import java.io.IOException;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * JwtTokenService class for handling JWT token operations such as generation
@@ -67,8 +70,12 @@ public class JwtTokenService {
      * @param scope          the scope of the token
      * @return the generated JWT token as a string
      */
-    public String generateToken (Authentication authentication, int expireTime, String tokenIssuer, TokenType tokenType, int rsaKeyVersion, String scope) {
+    public String generateToken (Authentication authentication, int expireTime, String tokenIssuer, TokenType tokenType,
+                                 int rsaKeyVersion, String scope, Collection<String> authorities) {
         log.info ("Token expire time in minutes: {}, token type: {}, scope {}", expireTime, tokenType, scope);
+
+
+        System.out.println("authorities: " + authorities);
         // Generate JWT claims
         Instant now = Instant.now ();
         var claims = JwtClaimsSet.builder ()
@@ -76,6 +83,7 @@ public class JwtTokenService {
                 .issuedAt (now)
                 .expiresAt (now.plus (expireTime, ChronoUnit.MINUTES))
                 .subject (authentication.getName ())
+                .claim("authorities", authorities) // Add authorities claim
                 .claim (ApplicationConstants.TOKEN_TYPE, tokenType).claim (ApplicationConstants.RSA_KEY_VERSION, rsaKeyVersion)
                 .claim ("scope", scope).build ();
 

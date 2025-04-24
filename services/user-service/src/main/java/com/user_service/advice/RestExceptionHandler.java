@@ -15,6 +15,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -149,6 +150,12 @@ public class RestExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Request params '" + name + "' is missing");
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Object> handleAccessDenied(AccessDeniedException ex) {
+        String message = "Access denied: You don't have permission to perform this operation";
+        log.error("Access denied exception: {}", ex.getMessage());
+        return buildResponseEntity(message, ErrorCode.ACCESS_DENIED, HttpStatus.FORBIDDEN, ex);
+    }
     private ResponseEntity<Object> buildResponseEntity(Collection<String> message, String errorCode,
                                                        HttpStatus status, Exception ex, Object error) {
         logger(message + " " + ex.getLocalizedMessage(), ex);

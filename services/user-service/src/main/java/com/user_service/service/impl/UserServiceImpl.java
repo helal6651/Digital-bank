@@ -1,6 +1,7 @@
 package com.user_service.service.impl;
 
 import com.user_service.enums.ResultCodeConstants;
+import com.user_service.enums.UserRole;
 import com.user_service.enums.UserStatus;
 import com.user_service.model.converter.UserConverter;
 import com.user_service.model.converter.response.PageableResponseConverter;
@@ -17,7 +18,6 @@ import org.springframework.data.domain.Pageable;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +36,9 @@ public class UserServiceImpl implements UserService {
     private final Argon2PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
 
-    public UserServiceImpl(UserRepository userRepository, KafkaProducer kafkaProducerService, UserConverter userConverter, Argon2PasswordEncoder passwordEncoder, RoleRepository roleRepository) {
+    public UserServiceImpl(UserRepository userRepository, KafkaProducer kafkaProducerService, UserConverter userConverter,
+                           Argon2PasswordEncoder passwordEncoder,
+                           RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.kafkaProducerService = kafkaProducerService;
         this.userConverter = userConverter;
@@ -51,9 +53,11 @@ public class UserServiceImpl implements UserService {
             throwApplicationException(ResultCodeConstants.ALREADY_EXIST);
         }
 
+
+        Role userRole = roleRepository.findByName(UserRole.USER.name())
+                .orElseThrow(() -> throwApplicationException(ResultCodeConstants.ROLE_NOT_FOUND));
+
         String hashedPassword = passwordEncoder.encode(request.getPassword());
-      /*  Role userRole = roleRepository.findByName("ADMIN")
-                .orElseThrow(() -> new RuntimeException("Role not found"));*/
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -63,13 +67,15 @@ public class UserServiceImpl implements UserService {
                 .mfaEnabled(false)
                 .roles(new HashSet<>()) // Initialize the roles set
                 .build();
-      //  user.getRoles().add(userRole);
+
+        user.getRoles().add(userRole);
+
         userRepository.save(user);
         // Send notification email
         LocalDateTime now = LocalDateTime.now(); // Get current date and time
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String formattedDateTime = now.format(formatter);
-        kafkaProducerService.sendMessage("user-registration-topic " + request.getEmail() + ", " + formattedDateTime);
+         kafkaProducerService.sendMessage("user-registration-topic " + request.getEmail() + ", " + formattedDateTime);
 
         return UserResponse.builder()
                 .userName(user.getUsername())
@@ -77,21 +83,6 @@ public class UserServiceImpl implements UserService {
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt())
                 .build();
-    }
-
-
-    public List<UserResponse> readAllUsers() {
-        List<User> users = userRepository.findAll();
-        return users.stream().map(user -> UserResponse.builder()
-                .userId(user.getUserId())
-                .userName(user.getUsername())
-                .email(user.getEmail())
-                .status(user.getStatus())
-                .mfaEnabled(user.getMfaEnabled())
-                .createdAt(user.getCreatedAt())
-                .lastLogin(user.getLastLogin())
-                .build()
-        ).collect(Collectors.toList());
     }
 
     public PageableResponseDTO<UserResponse> getAllUser(Pageable pageable) {
@@ -105,15 +96,15 @@ public class UserServiceImpl implements UserService {
         if (user_.isPresent()) {
 
             User user = user_.get();
-          /*  Set<String> roleNames = user.getRoles().stream()
+            Set<String> roleNames = user.getRoles().stream()
                     .map(Role::getName)
-                    .collect(Collectors.toSet());*/
+                    .collect(Collectors.toSet());
 
             return UserResponse.builder()
                     .userId(user.getUserId())
                     .userName(user.getUsername())
                     .email(user.getEmail())
-                  //  .roles(roleNames)
+                    .roles(roleNames)
                     .status(user.getStatus())
                     .mfaEnabled(user.getMfaEnabled())
                     .createdAt(user.getCreatedAt())
