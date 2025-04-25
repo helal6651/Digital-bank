@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+  labels:
+    app: account-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+        - name: account-service
+          image: bjitpdmad/account-service:latest
+          ports:
+            - containerPort: 9492
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/user-service-db
+            - name: SPRING_DATASOURCE_USERNAME
+              value: postgres
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: secure_password_2025
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: SPRING_KAFKA_CONSUMER_BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET
+              value: earliest
+            - name: SPRING_KAFKA_PRODUCER_KEY_SERIALIZER
+              value: org.apache.kafka.common.serialization.StringSerializer
+            - name: SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER
+              value: org.apache.kafka.common.serialization.StringSerializer
+            - name: SPRING_APPLICATION_NAME
+              value: account-service
+            - name: SERVER_PORT
+              value: "9492"
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: update
+            - name: SPRING_JPA_SHOW_SQL
+              value: "true"
+            - name: SPRING_CLOUD_CONFIG_ENABLED
+              value: "false"
+            - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
+              value: org.hibernate.dialect.PostgreSQLDialect
+            - name: ROLE_ID
+              value: kdsfdsfdsf
+            - name: SECRET_ID
+              value: kdsfdsfdsf

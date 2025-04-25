@@ -11,6 +11,7 @@ This project contains Kubernetes configurations for deploying a digital banking 
   - **api-gateway/**: Deployment and service for the API Gateway.
   - **user-service/**: Deployment and service for the User Service.
   - **namespace.yaml**: Defines the namespace for the application.
+  - **account-service/**: Deployment and service for the Account Service.  
 
 - **overlays/**: Contains environment-specific configurations.
   - **dev/**: Development environment configurations.
@@ -60,6 +61,14 @@ kubectl apply -k .
 minikube service user-service -n digital-bank
 
    ```
+ 
+# To get the "account-service" URL and dynamic port from the namespace "digital-bank"
+
+
+   ```
+minikube service account-service -n digital-bank
+
+   ``` 
 
 # To see all the pods  from the namespace "digital-bank"
 

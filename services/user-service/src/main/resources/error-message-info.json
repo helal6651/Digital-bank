@@ -31,6 +31,18 @@
     "level": "ERROR",
     "message": "Password length must be at least 8 characters long and must contain letter and number. Only !@#$%^&*() special characters are allowed"
   },
+  "4007": {
+    "level": "ERROR",
+    "message": "User role not found."
+  },
+  "4025": {
+    "level": "ERROR",
+    "message": "Unauthorized operation"
+  },
+  "4026": {
+    "level": "ERROR",
+    "message": "Invalid date format."
+  },
   "5000": {
     "level": "ERROR",
     "message": "Internal server error."

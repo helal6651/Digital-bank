@@ -11,10 +11,17 @@ import com.user_service.model.entity.User;
 import com.user_service.repository.UserRepository;
 import com.user_service.response.AuthenticationResponseDTO;
 import com.user_service.service.AuthService;
+import com.user_service.service.CustomUserDetailsService;
 import com.user_service.service.JwtTokenService;
 import com.user_service.utils.ApplicationConstants;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -23,9 +30,11 @@ import static com.user_service.response.BankingResponseUtil.throwApplicationExce
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 
 /**
@@ -51,6 +60,9 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final Argon2PasswordEncoder passwordEncoder;
 
+    private final AuthenticationManager authenticationManager;
+    private final CustomUserDetailsService userDetailsService;
+
     /**
      * Constructor to initialize dependencies.
      *
@@ -62,16 +74,18 @@ public class AuthServiceImpl implements AuthService {
      *                           for tokens
      */
     public AuthServiceImpl(JwtTokenService tokenService, UserSecretsManager userSecretsManager,
-                           JwtSettings jwtSettings, UserRepository userRepository, Argon2PasswordEncoder passwordEncoder) {
+                           JwtSettings jwtSettings, UserRepository userRepository, Argon2PasswordEncoder passwordEncoder, AuthenticationManager authenticationManager, CustomUserDetailsService userDetailsService) {
         this.tokenService = tokenService;
         this.userSecretsManager = userSecretsManager;
         this.jwtSettings = jwtSettings;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
-    public AuthenticationResponseDTO authenticate(LoginRequest request) throws IOException {
+    public AuthenticationResponseDTO authenticate(LoginRequest request) throws Exception {
         log.info("User name: {}", request.getUsername());
         SecretDto secretDto = userSecretsManager.getSecretDto();
         Matcher matcher = emailPattern.matcher(request.getUsername());
@@ -101,13 +115,35 @@ public class AuthServiceImpl implements AuthService {
         LocalDateTime now = LocalDateTime.now();
         user.setLastLogin(now);
         userRepository.save(user);
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getUsername(),
+                        request.getPassword()
+                )
+        );
+
+        // Get authorities from the authenticated user
+        Collection<String> authorities = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
+        log.info("User authorities::::::::::::::::::::::;: {}", authorities);
+
         return AuthenticationResponseDTO.builder()
-                .accessToken(tokenService.generateToken(authenticationToken, jwtSettings.getTokenExpirationTime(), jwtSettings.getTokenIssuer(),
-                        TokenType.ACCESS, intRSAKeyVersion, ApplicationConstants.USER_ADD))
+                .accessToken(tokenService.generateToken(authentication, jwtSettings.getTokenExpirationTime(), jwtSettings.getTokenIssuer(),
+                        TokenType.ACCESS, intRSAKeyVersion, ApplicationConstants.USER_ADD, authorities))
                 .refreshToken(tokenService.generateToken(authenticationToken, jwtSettings.getRefreshTokenExpTime(), jwtSettings.getTokenIssuer(),
-                        TokenType.REFRESH, intRSAKeyVersion, ApplicationConstants.TOKEN_RENEW))
+                        TokenType.REFRESH, intRSAKeyVersion, ApplicationConstants.TOKEN_RENEW, authorities))
                 .build();
     }
-
+    private void authenticate(String username, String password) throws Exception {
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+        } catch (DisabledException e) {
+            throw new Exception("USER_DISABLED", e);
+        } catch (BadCredentialsException e) {
+            throw new Exception("INVALID_CREDENTIALS", e);
+        }
+    }
 
 }

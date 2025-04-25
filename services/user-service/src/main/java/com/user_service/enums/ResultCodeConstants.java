@@ -13,7 +13,14 @@ package com.user_service.enums;
  * @version 1.0
  */
 public enum ResultCodeConstants {
-    INTERNAL_SERVER_ERROR, FILE_SIZE_LIMIT, FILE_REQUIRED, UNSUPPORTED_FILE_TYPE, ALREADY_EXIST, TOKEN_EXPIRED, AUTH_FAILURE,INVALID_PASSWORD_PATTERN,
-    ResultCodeConstants () {
+    INTERNAL_SERVER_ERROR,
+    INVALID_DATA,
+    UNAUTHORIZED_OPERATION,
+    ROLE_NOT_FOUND,
+    ALREADY_EXIST,
+    TOKEN_EXPIRED,
+    AUTH_FAILURE,
+    INVALID_PASSWORD_PATTERN,
+    ResultCodeConstants() {
     }
 }

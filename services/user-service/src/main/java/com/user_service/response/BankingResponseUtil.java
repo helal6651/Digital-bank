@@ -24,16 +24,16 @@ public class BankingResponseUtil {
     }
 
 
-    public static BankingApplicationException throwApplicationException (ResultCodeConstants authResultCode) throws BankingApplicationException {
+    public static BankingApplicationException throwApplicationException(ResultCodeConstants authResultCode) throws BankingApplicationException {
         switch (authResultCode) {
             case ALREADY_EXIST:
-                throw new BankingApplicationException (
+                throw new BankingApplicationException(
                         authResultCode,
                         ErrorCode.ALREADY_EXIST,
                         HttpStatus.BAD_REQUEST
                 );
             case TOKEN_EXPIRED:
-                throw new BankingApplicationException (
+                throw new BankingApplicationException(
                         authResultCode,
                         ErrorCode.JWT_TOKEN_EXPIRED,
                         HttpStatus.BAD_REQUEST
@@ -45,10 +45,28 @@ public class BankingResponseUtil {
                         ErrorCode.INVALID_PASSWORD_PATTERN,
                         HttpStatus.BAD_REQUEST
                 );
+            case ROLE_NOT_FOUND:
+                throw new BankingApplicationException(
+                        authResultCode,
+                        ErrorCode.ROLE_NOT_FOUND,
+                        HttpStatus.BAD_REQUEST
+                );
+            case UNAUTHORIZED_OPERATION:
+                throw new BankingApplicationException(
+                        authResultCode,
+                        ErrorCode.UNAUTHORIZED_OPERATION,
+                        HttpStatus.UNAUTHORIZED
+                );
+            case INVALID_DATA:
+                throw new BankingApplicationException(
+                        authResultCode,
+                        ErrorCode.INVALID_DATA,
+                        HttpStatus.BAD_REQUEST
+                );
             default:
                 // Default case for unhandled result codes
-                throw BankingApplicationException.builder ().resultCode (ResultCodeConstants.INTERNAL_SERVER_ERROR)
-                        .errorCode (ErrorCode.INTERNAL_SERVER_ERROR).build ();
+                throw BankingApplicationException.builder().resultCode(ResultCodeConstants.INTERNAL_SERVER_ERROR)
+                        .errorCode(ErrorCode.INTERNAL_SERVER_ERROR).build();
         }
     }
 

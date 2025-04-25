@@ -16,9 +16,8 @@ import java.util.Set;
 @Getter
 @Setter
 @Entity
-@Table(name = "`Users`") // Backticks for reserved keyword
+@Table(name = "users")
 @Data
-
 public class User {
 
     @Id
@@ -53,7 +52,7 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.MERGE})
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),

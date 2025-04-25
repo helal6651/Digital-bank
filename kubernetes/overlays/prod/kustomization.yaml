@@ -4,9 +4,10 @@ resources:
   - ../../base/postgres
   - ../../base/api-gateway
   - ../../base/user-service
-  - ../../base/front-end
+  - ../../base/account-service
   - ../../base/namespace
   - ../../base/vault
+  - ../../base/front-end
 
 configMapGenerator:
   - name: prod-config
@@ -16,9 +17,10 @@ configMapGenerator:
 images:
   - name: bjitpdmad/api-gateway-service:latest
     newTag: latest
-
-  - name: bjitpdmad/bjit-digital-banking:user-service-latest
+  - name: bjitpdmad/user-service:latest
     newTag: latest
+  - name: bjitpdmad/account-service:latest
+    newTag: latest    
   - name: obsidiandynamics/kafdrop:latest
     newTag: latest
   - name: bitnami/kafka:latest
