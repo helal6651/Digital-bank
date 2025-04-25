@@ -7,6 +7,7 @@ resources:
   - ../../base/namespace
   - ../../base/vault
   - ../../base/user-service
+  - ../../base/notification-service
   - ../../base/front-end
 
 configMapGenerator:
@@ -28,6 +29,8 @@ images:
   - name: hashicorp/vault
     newTag: 1.13.3
   - name: bjitpdmad/user-service
+    newTag: latest
+  - name: bjitpdmad/notification-service
     newTag: latest
   - name: bjitpdmad/db-frontend
     newTag: latest
