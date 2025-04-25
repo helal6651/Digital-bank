@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vault
-  labels:
-    app: vault
 spec:
   replicas: 1
   selector:
@@ -14,22 +12,66 @@ spec:
       labels:
         app: vault
     spec:
+      serviceAccountName: vault-init
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+      - name: vault-data-init
+        image: busybox
+        command: ["sh", "-c", 
+          "echo 'Starting data directory initialization...';
+          mkdir -p /vault/data && 
+          echo 'Directory created successfully';
+          chown 100:1000 /vault/data && 
+          echo 'Permissions updated';
+          chmod 770 /vault/data;
+          echo 'InitContainer completed at $(date)'
+        "]
+        securityContext:
+          runAsUser: 0
+        volumeMounts:
+        - name: vault-data
+          mountPath: /vault/data
       containers:
       - name: vault
-        image: vault:1.13.3
+        image: hashicorp/vault:1.13.3
         imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 8200
-          name: vaultport
-          protocol: TCP
+        command: ["/bin/sh"]
+        args:
+          - "-c"
+          - |
+            echo "$(date) - Starting dependency installation" > /proc/1/fd/1
+            apk add --no-cache curl jq >/dev/null 2>&1 && \
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" >/dev/null 2>&1 && \
+            chmod +x kubectl && mv kubectl /usr/local/bin/
+            echo "$(date) - Dependencies installed successfully" > /proc/1/fd/1
+            
+            echo "$(date) - Starting Vault server" > /proc/1/fd/1
+            vault server -config=/vault/config/vault.json &
+            VAULT_PID=$!
+            
+            echo "$(date) - Waiting for Vault status" > /proc/1/fd/1
+            until vault status >/dev/null 2>&1; do
+              echo "$(date) - Vault not ready yet..." > /proc/1/fd/1
+              sleep 1
+            done
+            
+            echo "$(date) - Executing init script" > /proc/1/fd/1
+            chmod +x /vault/init/init.sh
+            /vault/init/init.sh
+            
+            wait $VAULT_PID
+        env:
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
         securityContext:
+          runAsUser: 100
+          runAsGroup: 1000
           capabilities:
             add: ["IPC_LOCK"]
-        env:
-        - name: VAULT_DEV_ROOT_TOKEN_ID
-          value: "dev-root-token"
-        - name: VAULT_DEV_LISTEN_ADDRESS
-          value: "0.0.0.0:8200"
+        ports:
+        - containerPort: 8200
+          name: http
         volumeMounts:
         - name: vault-data
           mountPath: /vault/data
@@ -37,13 +79,6 @@ spec:
           mountPath: /vault/config
         - name: vault-init-script
           mountPath: /vault/init
-        command: ["/bin/sh"]
-        args:
-        - -c
-        - |
-          vault server -config=/vault/config/vault.json &
-          sleep 5
-          sh /vault/init/init.sh
       volumes:
       - name: vault-data
         persistentVolumeClaim:
@@ -54,3 +89,4 @@ spec:
       - name: vault-init-script
         configMap:
           name: vault-init-script
+          defaultMode: 0755

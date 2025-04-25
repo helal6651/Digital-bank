@@ -5,7 +5,7 @@ metadata:
   labels:
     app: user-service
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: user-service
@@ -51,6 +51,12 @@ spec:
             - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
               value: org.hibernate.dialect.PostgreSQLDialect
             - name: ROLE_ID
-              value: kdsfdsfdsf
+              valueFrom:
+                secretKeyRef:
+                  name: vault-approle-credentials
+                  key: role_id
             - name: SECRET_ID
-              value: kdsfdsfdsf
+              valueFrom:
+                secretKeyRef:
+                  name: vault-approle-credentials
+                  key: secret_id

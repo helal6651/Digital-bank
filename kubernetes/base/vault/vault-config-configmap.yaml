@@ -3,7 +3,6 @@ kind: ConfigMap
 metadata:
   name: vault-config
   namespace: digital-bank
-
 data:
   vault.json: |
     {
@@ -18,5 +17,7 @@ data:
           "path": "/vault/data"
         }
       },
-      "ui": true
+      "ui": true,
+      "disable_mlock": true,
+      "api_addr": "http://vault.digital-bank.svc.cluster.local:8200"
     }

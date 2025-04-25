@@ -1,14 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: vault  # Changed from "postgres"
+  name: vault
+  namespace: digital-bank
   labels:
-    app: vault  # Correct label
+    app: vault
 spec:
   type: ClusterIP
   ports:
-    - port: 8200  # Use Vault's port
+    - port: 8200
       targetPort: 8200
       protocol: TCP
   selector:
-    app: vault  # Match Vault Deployment's labels
+    app: vault

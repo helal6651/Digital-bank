@@ -3,72 +3,96 @@ kind: ConfigMap
 metadata:
   name: vault-init-script
   namespace: digital-bank
-
 data:
   init.sh: |
     #!/bin/sh
-    
-    # Wait for Vault to be ready
-    until VAULT_TOKEN=dev-root-token vault status > /dev/null 2>&1; do
-      echo "Waiting for Vault to be ready..."
+    set -eo pipefail
+
+    export VAULT_ADDR='http://127.0.0.1:8200'
+    LOG_FILE=/vault/data/init.log
+
+    vault server -config='/vault/config/vault.json'
+
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    echo "Vault initialization started at $(date)"
+
+    # Wait for Vault API
+    until vault status >/dev/null 2>&1; do
+      echo "Waiting for Vault API..."
       sleep 2
     done
-    
-    echo "Vault is ready, initializing secrets..."
-    
-    # Set environment variables
-    export VAULT_ADDR='http://127.0.0.1:8200'
-    export VAULT_TOKEN='dev-root-token'
-    
-    # Enable secrets engines
-    vault secrets enable -path=secret kv-v2
-    
-    # Create database secrets
+
+    # Check initialization status
+    INIT_STATUS=$(vault status -format=json | jq -r .initialized)
+
+    if [ "$INIT_STATUS" = "false" ]; then
+      echo "Initializing Vault..."
+      INIT_OUTPUT=$(vault operator init -format=json -key-shares=1 -key-threshold=1)
+      echo "$INIT_OUTPUT" > /vault/data/init.json
+
+      UNSEAL_KEY=$(echo "$INIT_OUTPUT" | jq -r '.unseal_keys_b64[0]')
+      ROOT_TOKEN=$(echo "$INIT_OUTPUT" | jq -r '.root_token')
+
+      echo "$UNSEAL_KEY" > /vault/data/unseal.key
+      echo "$ROOT_TOKEN" > /vault/data/root.token
+      chmod 600 /vault/data/unseal.key /vault/data/root.token
+    else
+      echo "Vault already initialized"
+      UNSEAL_KEY=$(cat /vault/data/unseal.key)
+      ROOT_TOKEN=$(cat /vault/data/root.token)
+    fi
+
+    echo "Unsealing Vault..."
+    until vault operator unseal "$UNSEAL_KEY"; do
+      echo "Unseal attempt failed, retrying..."
+      sleep 2
+    done
+
+    while ! vault status | grep -q 'Sealed: false'; do
+      echo "Waiting for unseal completion..."
+      sleep 1
+    done
+
+    export VAULT_TOKEN="$ROOT_TOKEN"
+
+    # Enable secrets engine
+    if ! vault secrets list | grep -q 'secret/'; then
+      vault secrets enable -path=secret kv-v2
+    fi
+
+    # Write test secrets
     vault kv put secret/database/postgres username=postgres password=secure_password
-    
-    # Create application secrets
     vault kv put secret/applications/user-service api-key=user-service-api-key jwt-secret=your-jwt-secret-here
-    
-    # Create an example policy
-    cat > /tmp/app-policy.hcl << EOF
-    path "secret/data/applications/user-service" {
-      capabilities = ["read"]
-    }
-    EOF
-    
-    # Create the policy
-    vault policy write app-policy /tmp/app-policy.hcl
-    
-    # Enable approle auth method
-    vault auth enable approle
-    
-    # Create an approle for your application
+
+    # Generate RSA keys
+    openssl genrsa -out /tmp/private.pem 2048
+    openssl rsa -in /tmp/private.pem -pubout -out /tmp/public.pem
+    vault kv put secret/rsa-key-password \
+      private_key="$(cat /tmp/private.pem)" \
+      public_key="$(cat /tmp/public.pem)"
+    rm /tmp/private.pem /tmp/public.pem
+
+    # Create policies
+    echo 'path "secret/data/applications/user-service" { capabilities = ["read"] }
+    path "secret/data/rsa-key-password" { capabilities = ["read"] }' | vault policy write app-policy -
+
+    # Configure AppRole
+    vault auth enable approle >/dev/null 2>&1 || true
     vault write auth/approle/role/user-service \
-        token_policies="app-policy" \
-        token_ttl=1h \
-        token_max_ttl=4h
-        
-    # Get role-id and secret-id for the app
+      token_policies=app-policy \
+      token_ttl=1h \
+      token_max_ttl=4h
+
+    # Get Role ID and Secret ID
     ROLE_ID=$(vault read -field=role_id auth/approle/role/user-service/role-id)
     SECRET_ID=$(vault write -f -field=secret_id auth/approle/role/user-service/secret-id)
-    
-    # Create a token and save credentials to a file for reference
-    echo "Role ID: $ROLE_ID" > /vault/data/credentials.txt
-    echo "Secret ID: $SECRET_ID" >> /vault/data/credentials.txt
-    
-    echo "Vault initialization completed successfully!"
 
-    KEY_PATH="secret/rsa-key-password"
-    openssl genrsa -out private.pem 2048
-    openssl rsa -in private.pem -pubout -out public.pem
- 
-    # Read keys into variables
-    PRIVATE_KEY=$(cat private.pem)
-    PUBLIC_KEY=$(cat public.pem)
-    vault kv put "$KEY_PATH" private_key="$PRIVATE_KEY" public_key="$PUBLIC_KEY"
- 
-    # Clean up local files
-    rm private.pem public.pem
-    
-    # Keep the container running
+    # Create Kubernetes secret
+    kubectl create secret generic vault-approle-credentials \
+      --namespace="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)" \
+      --from-literal=role_id="$ROLE_ID" \
+      --from-literal=secret_id="$SECRET_ID" \
+      --dry-run=client -o yaml | kubectl apply -f -
+
+    echo "Vault initialization completed successfully at $(date)"
     tail -f /dev/null
