@@ -9,7 +9,6 @@ import com.user_service.utils.ApplicationConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
@@ -23,7 +22,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * JwtTokenService class for handling JWT token operations such as generation
@@ -73,9 +71,6 @@ public class JwtTokenService {
     public String generateToken (Authentication authentication, int expireTime, String tokenIssuer, TokenType tokenType,
                                  int rsaKeyVersion, String scope, Collection<String> authorities) {
         log.info ("Token expire time in minutes: {}, token type: {}, scope {}", expireTime, tokenType, scope);
-
-
-        System.out.println("authorities: " + authorities);
         // Generate JWT claims
         Instant now = Instant.now ();
         var claims = JwtClaimsSet.builder ()

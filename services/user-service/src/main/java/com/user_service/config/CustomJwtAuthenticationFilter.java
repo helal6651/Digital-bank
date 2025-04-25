@@ -15,78 +15,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-/**
- * Custom JWT authentication filter for validating incoming requests.
- * <p>
- * This filter intercepts HTTP requests, extracts and validates the JWT token
- * from the `Authorization` header, and ensures the token is valid and of the
- * correct type (ACCESS)
- * . If the token is invalid or expired, an appropriate
- * error response is returned.
- * </p>
- *
- * <p>
- * <b>Key Features:</b>
- * </p>
- * <ul>
- * <li>Validates the presence and correctness of the JWT token in incoming
- * requests.</li>
- * <li>Handles token validation errors such as expiration and incorrect token
- * type.</li>
- * <li>Logs detailed information about incoming requests and responses for
- * debugging purposes.</li>
- * </ul>
- *
- * <p>
- * The class is annotated with:
- * </p>
- * <ul>
- * <li>{@link Slf4j}: Enables logging for tracking requests and responses.</li>
- * </ul>
- *
- * <p>
- * <b>Usage:</b>
- * </p>
- * <ol>
- * <li>Configure this filter in the Spring Security filter chain.</li>
- * <li>Ensure a `JwtDecoder` bean is available in the application context for
- * decoding tokens.</li>
- * <li>Apply the filter to API endpoints requiring authentication.</li>
- * </ol>
- *
- * <p>
- * <b>Behavior:</b>
- * </p>
- * <ul>
- * <li>If the token is valid, the request is passed down the filter chain.</li>
- * <li>If the token is invalid or expired, the filter clears the security
- * context and returns an appropriate error response.</li>
- * </ul>
- *
- * @author BJIT
- * @version 1.0
- */
 @Slf4j
 public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger("REQUEST_RESPONSE_LOGGER");
@@ -141,7 +80,6 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
                 request.setAttribute(ApplicationConstants.REQUEST_ID, requestId);
                 log.info("Request ID: {} -", requestId);
                 validateToken(token, requestId, request);
-               // SecurityContextHolder.getContext().setAuthentication(token);
             } catch (Exception e) {
                 handleException(response, e);
                 return;
@@ -187,14 +125,10 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
         }
        String userName =  decodedJwt.getSubject();
         log.info("User name from token: {}", userName);
-        if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        /*if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             log.info("Setting authentication for user: {}", userName);
             UserDetails userDetails = this.customUserDetailsService.loadUserByUsername(userName);
-            Collection<? extends GrantedAuthority> authorities = Stream.concat(
-                    decodedJwt.getClaimAsStringList("authorities").stream()
-                            .map(SimpleGrantedAuthority::new),
-                    userDetails.getAuthorities().stream()
-            ).collect(Collectors.toSet());
+            System.out.println("Authentication details: " + userDetails.getAuthorities());
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     userDetails,
                     null,
@@ -203,7 +137,7 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        }
+        }*/
     }
 
     /**
