@@ -3,10 +3,11 @@ resources:
   - ../../base/kafdrop
   - ../../base/postgres
   - ../../base/api-gateway
-  - ../../base/user-service
   - ../../base/account-service
   - ../../base/namespace
   - ../../base/vault
+  - ../../base/user-service
+  - ../../base/front-end
 
 configMapGenerator:
   - name: prod-config
@@ -14,19 +15,21 @@ configMapGenerator:
       - config.yaml
 
 images:
-  - name: bjitpdmad/api-gateway-service:latest
+  - name: bjitpdmad/api-gateway-service
     newTag: latest
-  - name: bjitpdmad/user-service:latest
-    newTag: latest
-  - name: bjitpdmad/account-service:latest
+  - name: bjitpdmad/account-service
     newTag: latest    
-  - name: obsidiandynamics/kafdrop:latest
+  - name: obsidiandynamics/kafdrop
     newTag: latest
-  - name: bitnami/kafka:latest
+  - name: bitnami/kafka
     newTag: latest
-  - name: postgres:latest
+  - name: postgres
     newTag: latest
-  - name: vault:latest
+  - name: hashicorp/vault
+    newTag: 1.13.3
+  - name: bjitpdmad/user-service
+    newTag: latest
+  - name: bjitpdmad/db-frontend
     newTag: latest
 
 namespace: digital-bank
