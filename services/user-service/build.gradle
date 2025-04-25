@@ -45,6 +45,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server:3.4.4")
 	implementation("org.springframework.cloud:spring-cloud-starter-vault-config:4.2.1")
 	implementation("org.apache.commons:commons-lang3:3.0")
+	//implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
