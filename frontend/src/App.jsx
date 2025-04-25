@@ -7,7 +7,7 @@ import Dashboard from './auth-service/pages/Dashboard';
 import './App.css';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   return (
     <Router>

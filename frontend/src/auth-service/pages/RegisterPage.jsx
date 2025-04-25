@@ -18,7 +18,7 @@ const RegisterPage = ({ onRegisterSuccess }) => {
       <PageHeader text="Digital Banking" />
       <div className="register-container">
         <div className="register-header">
-          <h2>Create a new account</h2>
+          <h5>Create a new account</h5>
           <p>It's quick and easy.</p>
           <div className="divider"></div>
         </div>

@@ -4,10 +4,10 @@ export const validateEmail = (email) => {
 };
 
 export const validatePassword = (password) => {
-  return password.length >= 6; // Password must be at least 6 characters long
+  return password.length >= 6; 
 };
 
 export const validateUsername = (username) => {
-  const re = /^[a-zA-Z0-9_]{3,15}$/; // Username must be 3-15 characters long and can include letters, numbers, and underscores
+  const re = /^[a-zA-Z0-9_]{3,15}$/; 
   return re.test(String(username));
 };
