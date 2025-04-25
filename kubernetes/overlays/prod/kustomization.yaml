@@ -7,6 +7,7 @@ resources:
   - ../../base/account-service
   - ../../base/namespace
   - ../../base/vault
+  - ../../base/front-end
 
 configMapGenerator:
   - name: prod-config
@@ -27,6 +28,8 @@ images:
   - name: postgres:latest
     newTag: latest
   - name: vault:latest
+    newTag: latest
+  - name: bjitpdmad/db-frontend:latest
     newTag: latest
 
 namespace: digital-bank
