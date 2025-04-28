@@ -33,10 +33,10 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         // First, ensure permissions exist
-        createPermissionsIfNotExist();
+      //  createPermissionsIfNotExist();
 
         // Then create roles with existing permissions
-        createRolesIfNotExist();
+       // createRolesIfNotExist();
 
         // Finally create users
         createUsersIfNotExist();
@@ -80,7 +80,6 @@ public class DataSeeder implements CommandLineRunner {
 
             Role adminRole = roleRepository.findByName(UserRole.ADMIN.name())
                     .orElseThrow(() -> new RuntimeException("Admin role not found"));
-            System.out.println("Admin role: " + adminRole);
             User user = User.builder()
                     .username("digital_bank")
                     .email("digital_bank@gmail.com")

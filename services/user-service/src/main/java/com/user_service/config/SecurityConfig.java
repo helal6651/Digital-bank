@@ -6,8 +6,6 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.user_service.model.dto.SecretDto;
-import com.user_service.repository.UserRepository;
-import com.user_service.service.CustomUserDetailsService;
 import com.user_service.utils.ApplicationConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +23,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.core.convert.converter.Converter;
 
@@ -105,18 +102,17 @@ public class SecurityConfig {
                         )
                         .authenticationEntryPoint(entryPoint()))
                 .httpBasic(withDefaults()).headers(header -> header.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
-                .exceptionHandling(exceptions -> exceptions
-                        .accessDeniedHandler(new CustomAccessDeniedHandler())
-                )
                 .addFilterBefore(customJwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
+
     // Add this converter to properly map authorities
     private Converter<Jwt, AbstractAuthenticationToken> jwtAuthenticationConverter() {
         JwtAuthenticationConverter jwtConverter = new JwtAuthenticationConverter();
         jwtConverter.setJwtGrantedAuthoritiesConverter(new CustomJwtGrantedAuthoritiesConverter());
         return jwtConverter;
     }
+
     @Bean
     public CustomJwtAuthenticationFilter customJwtAuthenticationFilter() {
         log.info("Creating CustomJwtAuthenticationFilter bean");
@@ -129,10 +125,6 @@ public class SecurityConfig {
         return new CustomAuthenticationEntryPoint();
     }
 
-    /*    @Bean
-        public UserDetailsService userDetailsService() {
-            return new CustomUserDetailsService();
-        }*/
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration config

@@ -21,7 +21,7 @@ spec:
             - containerPort: 9491
           env:
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres2:5432/user-service-db
+              value: jdbc:postgresql://postgres:5432/user-service-db
             - name: SPRING_DATASOURCE_USERNAME
               value: postgres
             - name: SPRING_DATASOURCE_PASSWORD
@@ -37,7 +37,7 @@ spec:
             - name: SPRING_KAFKA_PRODUCER_KEY_SERIALIZER
               value: org.apache.kafka.common.serialization.StringSerializer
             - name: SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER
-              value: org.apache.kafka.common.serialization.StringSerializer
+              value: org.springframework.kafka.support.serializer.JsonSerializer
             - name: SPRING_APPLICATION_NAME
               value: user-service
             - name: SERVER_PORT

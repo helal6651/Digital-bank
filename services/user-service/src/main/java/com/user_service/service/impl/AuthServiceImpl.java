@@ -16,19 +16,15 @@ import com.user_service.service.JwtTokenService;
 import com.user_service.utils.ApplicationConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import static com.user_service.enums.ResultCodeConstants.ResultCodeConstants;
 import static com.user_service.response.BankingResponseUtil.throwApplicationException;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Optional;
@@ -109,7 +105,6 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Create authentication token
-        var authenticationToken = new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword());
         Integer intRSAKeyVersion = secretDto.getMetadata().getVersion();
         log.info("intRSAKeyVersion in AuthService impl: {}", intRSAKeyVersion);
         LocalDateTime now = LocalDateTime.now();
@@ -127,23 +122,13 @@ public class AuthServiceImpl implements AuthService {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
-        log.info("User authorities::::::::::::::::::::::;: {}", authorities);
+        log.info("User authorities:: {}", authorities);
 
         return AuthenticationResponseDTO.builder()
                 .accessToken(tokenService.generateToken(authentication, jwtSettings.getTokenExpirationTime(), jwtSettings.getTokenIssuer(),
                         TokenType.ACCESS, intRSAKeyVersion, ApplicationConstants.USER_ADD, authorities))
-                .refreshToken(tokenService.generateToken(authenticationToken, jwtSettings.getRefreshTokenExpTime(), jwtSettings.getTokenIssuer(),
+                .refreshToken(tokenService.generateToken(authentication, jwtSettings.getRefreshTokenExpTime(), jwtSettings.getTokenIssuer(),
                         TokenType.REFRESH, intRSAKeyVersion, ApplicationConstants.TOKEN_RENEW, authorities))
                 .build();
     }
-    private void authenticate(String username, String password) throws Exception {
-        try {
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
-        } catch (DisabledException e) {
-            throw new Exception("USER_DISABLED", e);
-        } catch (BadCredentialsException e) {
-            throw new Exception("INVALID_CREDENTIALS", e);
-        }
-    }
-
 }

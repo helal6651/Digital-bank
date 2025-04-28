@@ -14,6 +14,7 @@ import com.user_service.response.PageableResponseDTO;
 import com.user_service.response.user.UserResponse;
 import com.user_service.service.UserService;
 import com.user_service.service.kafka.KafkaProducer;
+import com.user_service.utils.AuthenticationUtils;
 import org.springframework.data.domain.Pageable;
 
 import org.springframework.security.core.Authentication;
@@ -35,15 +36,17 @@ public class UserServiceImpl implements UserService {
     private final UserConverter userConverter;
     private final Argon2PasswordEncoder passwordEncoder;
     private final RoleRepository roleRepository;
+    private final AuthenticationUtils authenticationUtils;
 
     public UserServiceImpl(UserRepository userRepository, KafkaProducer kafkaProducerService, UserConverter userConverter,
                            Argon2PasswordEncoder passwordEncoder,
-                           RoleRepository roleRepository) {
+                           RoleRepository roleRepository, AuthenticationUtils authenticationUtils) {
         this.userRepository = userRepository;
         this.kafkaProducerService = kafkaProducerService;
         this.userConverter = userConverter;
         this.passwordEncoder = passwordEncoder;
         this.roleRepository = roleRepository;
+        this.authenticationUtils = authenticationUtils;
     }
 
     @Override
@@ -72,10 +75,7 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
         // Send notification email
-        LocalDateTime now = LocalDateTime.now(); // Get current date and time
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String formattedDateTime = now.format(formatter);
-         kafkaProducerService.sendMessage("user-registration-topic " + request.getEmail() + ", " + formattedDateTime);
+        kafkaProducerService.sendAccountActivationNotification(user.getUserId(), user.getEmail(), user.getUsername(), "digital-bank-active-user-en");
 
         return UserResponse.builder()
                 .userName(user.getUsername())
@@ -92,7 +92,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse showUser() {
-        Optional<User> user_ = getLoggedInUser();
+        Optional<User> user_ = authenticationUtils.getLoggedInUser();
         if (user_.isPresent()) {
 
             User user = user_.get();
@@ -114,7 +114,7 @@ public class UserServiceImpl implements UserService {
         return null;
     }
 
-    public Optional<User> getLoggedInUser() {
+  /*  public Optional<User> getLoggedInUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return null;
@@ -126,6 +126,6 @@ public class UserServiceImpl implements UserService {
 
         // Fetch the user from the repository using the username
         return userRepository.findByUsername(username);
-    }
+    }*/
 
 }
