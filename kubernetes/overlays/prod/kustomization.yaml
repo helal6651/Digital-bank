@@ -1,3 +1,6 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
 resources:
   - ../../base/kafka
   - ../../base/kafdrop
@@ -8,6 +11,7 @@ resources:
   - ../../base/vault
   - ../../base/user-service
   - ../../base/front-end
+  - ../../base/redis    # Include Redis configuration
 
 configMapGenerator:
   - name: prod-config
@@ -18,7 +22,7 @@ images:
   - name: bjitpdmad/api-gateway-service
     newTag: latest
   - name: bjitpdmad/account-service
-    newTag: latest    
+    newTag: latest
   - name: obsidiandynamics/kafdrop
     newTag: latest
   - name: bitnami/kafka
