@@ -1,3 +1,4 @@
+/*
 package com.user_service.repository;
 
 import com.user_service.model.entity.Permission;
@@ -11,3 +12,4 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
     Optional<Permission> findByName(String name);
 }
 
+*/

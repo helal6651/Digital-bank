@@ -63,6 +63,18 @@ public class BankingResponseUtil {
                         ErrorCode.INVALID_DATA,
                         HttpStatus.BAD_REQUEST
                 );
+            case USER_NOT_FOUND:
+                throw new BankingApplicationException(
+                        authResultCode,
+                        ErrorCode.USER_NOT_FOUND,
+                        HttpStatus.BAD_REQUEST
+                );
+            case WRONG_CREDENTIALS:
+                throw new BankingApplicationException(
+                        authResultCode,
+                        ErrorCode.WRONG_CREDENTIALS,
+                        HttpStatus.BAD_REQUEST
+                );
             default:
                 // Default case for unhandled result codes
                 throw BankingApplicationException.builder().resultCode(ResultCodeConstants.INTERNAL_SERVER_ERROR)

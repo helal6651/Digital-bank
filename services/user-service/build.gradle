@@ -21,6 +21,8 @@ configurations {
 
 repositories {
 	mavenCentral()
+	gradlePluginPortal()
+	maven { url "https://repo.spring.io/milestone" }
 }
 
 ext {
@@ -45,7 +47,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server:3.4.4")
 	implementation("org.springframework.cloud:spring-cloud-starter-vault-config:4.2.1")
 	implementation("org.apache.commons:commons-lang3:3.0")
-	//implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+	implementation project(':common-service')
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -55,13 +57,21 @@ dependencyManagement {
 	}
 }
 
-tasks.named('test') {
-	useJUnitPlatform()
-}
 bootJar {
 	enabled = true
+	mainClass = 'com.user_service.UserServiceApplication' // Replace with your main class
 }
 
 tasks.named('bootBuildImage') {
 	imageName = "bjitpdmad/user-service:latest"
 }
+
+/*
+bootJar {
+	enabled = true
+	mainClass = 'com.user_service.UserServiceApplication' // Update if your main class is different
+}
+
+springBoot {
+	mainClass = 'com.user_service.UserServiceApplication'
+}*/

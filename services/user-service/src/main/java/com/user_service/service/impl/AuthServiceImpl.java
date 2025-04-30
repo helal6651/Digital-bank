@@ -1,14 +1,14 @@
 package com.user_service.service.impl;
 
+import com.common_service.enums.UserStatus;
+import com.common_service.model.entity.User;
+import com.common_service.repository.UserRepository;
 import com.user_service.config.JwtSettings;
 import com.user_service.config.UserSecretsManager;
 
 import com.user_service.enums.TokenType;
-import com.user_service.enums.UserStatus;
 import com.user_service.model.dto.LoginRequest;
 import com.user_service.model.dto.SecretDto;
-import com.user_service.model.entity.User;
-import com.user_service.repository.UserRepository;
 import com.user_service.response.AuthenticationResponseDTO;
 import com.user_service.service.AuthService;
 import com.user_service.service.CustomUserDetailsService;
@@ -22,8 +22,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import static com.user_service.enums.ResultCodeConstants.ResultCodeConstants;
-import static com.user_service.response.BankingResponseUtil.throwApplicationException;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -31,6 +29,9 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static com.user_service.enums.ResultCodeConstants.ResultCodeConstants;
+import static com.user_service.response.BankingResponseUtil.throwApplicationException;
 
 
 /**
@@ -87,13 +88,15 @@ public class AuthServiceImpl implements AuthService {
         Matcher matcher = emailPattern.matcher(request.getUsername());
         Optional<User> userModel = null;
         if (matcher.matches()) {
+            log.info("User is email");
             userModel = userRepository.findByEmail(request.getUsername());
         } else {
             userModel = userRepository.findByUsername(request.getUsername());
         }
+        log.info("User name: {}", request.getUsername());
 
         User user = userModel
-                .orElseThrow(() -> throwApplicationException(ResultCodeConstants.AUTH_FAILURE));
+                .orElseThrow(() -> throwApplicationException(ResultCodeConstants.WRONG_CREDENTIALS));
 
         log.info("User status: {}", user.getStatus());
 
@@ -101,9 +104,9 @@ public class AuthServiceImpl implements AuthService {
             throwApplicationException(ResultCodeConstants.AUTH_FAILURE);
         }
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throwApplicationException(ResultCodeConstants.AUTH_FAILURE);
+            throwApplicationException(ResultCodeConstants.WRONG_CREDENTIALS);
         }
-
+        System.out.println("User password hash: " + user.getPasswordHash());
         // Create authentication token
         Integer intRSAKeyVersion = secretDto.getMetadata().getVersion();
         log.info("intRSAKeyVersion in AuthService impl: {}", intRSAKeyVersion);
@@ -112,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
+                       user.getUsername(),
                         request.getPassword()
                 )
         );
