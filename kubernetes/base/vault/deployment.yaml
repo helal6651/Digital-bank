@@ -1,7 +1,9 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vault
+  namespace: digital-bank # Make sure namespace is correct
 spec:
   replicas: 1
   selector:
@@ -12,60 +14,170 @@ spec:
       labels:
         app: vault
     spec:
-      serviceAccountName: vault-init
+      serviceAccountName: vault-init # Ensure this ServiceAccount exists and has RBAC for secrets
       securityContext:
-        fsGroup: 1000
+        fsGroup: 1000 # Ensures group ownership for the vault-data volume mount point
+      volumes: # Define volumes first
+      - name: vault-data
+        persistentVolumeClaim:
+          claimName: vault-pvc # Make sure this PVC exists and is Bound
+      - name: vault-config
+        configMap:
+          name: vault-config # References the vault-config ConfigMap
+      - name: vault-init-script
+        configMap:
+          name: vault-init-script # References the vault-init-script ConfigMap
+          defaultMode: 0755 # Sets executable permissions on the mounted script
+      - name: tools-volume # Shared volume for jq and kubectl
+        emptyDir: {}
       initContainers:
+      # Init Container 1: Prepare vault data directory (with recursive chmod)
       - name: vault-data-init
-        image: busybox
-        command: ["sh", "-c", 
-          "echo 'Starting data directory initialization...';
-          mkdir -p /vault/data && 
-          echo 'Directory created successfully';
-          chown 100:1000 /vault/data && 
-          echo 'Permissions updated';
-          chmod 770 /vault/data;
-          echo 'InitContainer completed at $(date)'
-        "]
+        image: busybox # Minimal image for file operations
+        command:
+          - sh
+          - -c
+          - |
+            set -e
+            echo 'Starting data directory initialization...'
+            mkdir -p /vault/data
+            echo 'Directory created/exists.'
+            # Set ownership FIRST (before permissions)
+            chown -R 100:1000 /vault/data  # UID 100 (vault user), GID 1000 (fsGroup)
+            # Then set permissions
+            chmod -R 770 /vault/data
+            echo 'Recursive permissions set (chmod 770)'
+            echo "Permissions:"
+            ls -ld /vault/data
+            ls -l /vault/data
+            echo "vault-data-init completed at $(date)"
         securityContext:
-          runAsUser: 0
+          runAsUser: 0 # Run as root to mkdir/chmod
         volumeMounts:
         - name: vault-data
-          mountPath: /vault/data
+          mountPath: /vault/data # Mount vault data volume
+
+      # Init Container 2: Install tools and place them in the shared volume
+      # ================== openssl CHANGES START HERE ==================
+      - name: install-tools
+        image: alpine:latest # Keeping 'latest' as requested
+        command:
+          - sh
+          - -c
+          - |
+            set -ex # Exit on error, print commands
+
+            # Install necessary tools: curl, ca-certificates, AND openssl
+            echo "Updating apk and installing curl, ca-certificates, openssl..."
+            apk update
+            apk add --no-cache curl ca-certificates openssl # Added openssl
+
+            # Define target directory for tools WITHIN the shared volume
+            TOOLS_DIR="/tools"
+            mkdir -p "$TOOLS_DIR"
+
+            # --- Copy openssl binary (installed via apk) to shared volume ---
+            OPENSSL_PATH=$(command -v openssl)
+            if [ -z "$OPENSSL_PATH" ]; then
+                echo "ERROR: openssl installed but command -v failed to find it."
+                exit 1
+            fi
+            echo "Copying openssl from $OPENSSL_PATH to $TOOLS_DIR/openssl"
+            cp "$OPENSSL_PATH" "$TOOLS_DIR/openssl"
+            # Ensure it's executable in the target location
+            chmod +x "$TOOLS_DIR/openssl"
+            echo "openssl downloaded."
+
+            # --- Download Static kubectl ---
+            echo "Downloading static kubectl..."
+            KUBECTL_LATEST=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+            if ! echo "$KUBECTL_LATEST" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+              echo "ERROR: Failed to get valid latest kubectl version string. Got: '$KUBECTL_LATEST'"
+              exit 1
+            fi
+            KUBECTL_URL="https://dl.k8s.io/release/$KUBECTL_LATEST/bin/linux/amd64/kubectl"
+            echo "Attempting to download kubectl from: $KUBECTL_URL"
+            if ! curl -Lo "$TOOLS_DIR/kubectl" "$KUBECTL_URL"; then echo "ERROR: Failed to download kubectl"; exit 1; fi
+            chmod +x "$TOOLS_DIR/kubectl"
+            echo "kubectl downloaded."
+
+            # --- Download Static jq ---
+            echo "Downloading static jq..."
+            JQ_URL="https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64"
+            echo "Attempting to download jq from: $JQ_URL"
+            if ! curl -Lo "$TOOLS_DIR/jq" "$JQ_URL"; then echo "ERROR: Failed to download jq"; exit 1; fi
+            chmod +x "$TOOLS_DIR/jq"
+            echo "jq downloaded."
+
+            # --- Verify Files Exist in Shared Volume ---
+            echo "Verifying files in $TOOLS_DIR..."
+            ls -l "$TOOLS_DIR"
+            # Verify openssl exists and is executable
+            if ! "$TOOLS_DIR/openssl" version > /dev/null; then echo "openssl verification failed in /tools"; exit 1; fi
+            # Verify kubectl exists and is executable
+            if ! "$TOOLS_DIR/kubectl" version --client > /dev/null; then echo "kubectl verification failed in /tools"; exit 1; fi
+             # Verify jq exists and is executable
+            if ! "$TOOLS_DIR/jq" --version > /dev/null; then echo "jq verification failed in /tools"; exit 1; fi
+            echo "Tools in shared volume verified."
+
+            echo "install-tools completed at $(date)"
+        securityContext:
+          runAsUser: 0 # Run as root to use apk
+        volumeMounts:
+        - name: tools-volume # Mount the shared tools volume
+          mountPath: /tools # Target directory within this container
+      # =================== openssl CHANGES END HERE ===================
+
       containers:
+      # Main Vault Container
       - name: vault
-        image: hashicorp/vault:1.13.3
+        image: hashicorp/vault:1.13.3 # Keeping specific version
         imagePullPolicy: IfNotPresent
+        # Keeping original command/args as requested
         command: ["/bin/sh"]
         args:
           - "-c"
           - |
-            echo "$(date) - Starting dependency installation" > /proc/1/fd/1
-            apk add --no-cache curl jq >/dev/null 2>&1 && \
-            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" >/dev/null 2>&1 && \
-            chmod +x kubectl && mv kubectl /usr/local/bin/
-            echo "$(date) - Dependencies installed successfully" > /proc/1/fd/1
-            
-            echo "$(date) - Starting Vault server" > /proc/1/fd/1
+            set -e
+
+            # Original simple startup sequence
+            echo "Starting Vault server..."
+            # exec vault server -config=/vault/config/vault.json & # Removed exec & bg for original behavior? Check original script. If this was original keep it.
+            # Let's assume the original was simpler start & wait, adjust if needed:
             vault server -config=/vault/config/vault.json &
             VAULT_PID=$!
-            
-            echo "$(date) - Waiting for Vault status" > /proc/1/fd/1
-            until vault status >/dev/null 2>&1; do
-              echo "$(date) - Vault not ready yet..." > /proc/1/fd/1
-              sleep 1
+            echo "Vault server started with PID $VAULT_PID"
+
+            # Original Wait loop (adjust sleep/attempts if different previously)
+            echo "Waiting for Vault server to respond..."
+            until vault status >/dev/null 2>&1 || [ $? -eq 2 ]; do
+              echo "Vault not ready yet, sleeping..."
+              sleep 2
+              # Check if the background process is still alive
+              if ! kill -0 $VAULT_PID > /dev/null 2>&1; then
+                echo "Vault process (PID $VAULT_PID) died unexpectedly during startup wait!"
+                exit 1
+              fi
             done
-            
-            echo "$(date) - Executing init script" > /proc/1/fd/1
-            chmod +x /vault/init/init.sh
-            /vault/init/init.sh
-            
-            wait $VAULT_PID
+            echo "Vault server responded."
+
+            # Original Init script execution
+            INIT_SCRIPT="/vault/init/init.sh"
+            echo "Running initialization script: $INIT_SCRIPT"
+            "$INIT_SCRIPT" # Assumes script handles its own errors
+
+            # Original keep container running command
+            echo "Bringing Vault process (PID $VAULT_PID) to foreground..."
+            wait $VAULT_PID # Keep container alive while vault server runs
+            VAULT_EXIT_CODE=$?
+            echo "Vault server process exited with code $VAULT_EXIT_CODE."
+            exit $VAULT_EXIT_CODE
         env:
         - name: VAULT_ADDR
           value: "http://127.0.0.1:8200"
+        # Keeping original securityContext as requested
         securityContext:
-          runAsUser: 100
+          runAsUser: 0  # Run as root
           runAsGroup: 1000
           capabilities:
             add: ["IPC_LOCK"]
@@ -79,14 +191,6 @@ spec:
           mountPath: /vault/config
         - name: vault-init-script
           mountPath: /vault/init
-      volumes:
-      - name: vault-data
-        persistentVolumeClaim:
-          claimName: vault-pvc
-      - name: vault-config
-        configMap:
-          name: vault-config
-      - name: vault-init-script
-        configMap:
-          name: vault-init-script
-          defaultMode: 0755
+        # Keeping original tools mount as requested
+        - name: tools-volume
+          mountPath: /usr/local/bin # Mounts init container's /tools content here

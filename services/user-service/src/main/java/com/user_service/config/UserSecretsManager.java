@@ -9,6 +9,7 @@ import com.user_service.service.VaultService;
 import com.user_service.utils.ApplicationConstants;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.vault.support.VaultResponse;
 
@@ -30,7 +31,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Service
 public class UserSecretsManager {
+    @Value("${user.service.private-key}")
+    private String privateKey;
+    @Value("${user.service.public-key}")
+    private String publicKey;
 
+    private String applicationName;
     private final VaultService vaultService;
     private final ObjectMapper objectMapper;
     private final Map<String, String> rsaKeyCache = new ConcurrentHashMap<>();
@@ -54,6 +60,11 @@ public class UserSecretsManager {
     public SecretDto getSecretDto() {
         log.info("Attempting to retrieve SecretDto from vault.");
         SecretDto secretDto = vaultService.getRsaKeyDto();
+        if (secretDto == null) {
+            log.info("SecretDto is null, building from cache.");
+            rsaKeyCache.put(ApplicationConstants.PRIVATE_KEY, privateKey);
+            rsaKeyCache.put(ApplicationConstants.PUBLIC_KEY, publicKey);
+        }
         if (secretDto != null && secretDto.getData() != null && secretDto.getMetadata() != null) {
             String privateKey = secretDto.getData().get(ApplicationConstants.PRIVATE_KEY);
             String publicKey = secretDto.getData().get(ApplicationConstants.PUBLIC_KEY);
