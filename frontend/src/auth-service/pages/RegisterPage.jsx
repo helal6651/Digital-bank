@@ -3,13 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Navbar, Footer } from '../components/layout';
 import RegisterForm from '../components/auth/RegisterForm';
 import PageHeader from '../components/layout/PageHeader';
+import { useAuth } from '../context/AuthContext';
 
-const RegisterPage = ({ onRegisterSuccess }) => {
+const RegisterPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleRegisterSuccess = () => {
-    onRegisterSuccess();
-    navigate('/dashboard');
+    // Don't login user yet - they need to use credentials on login page
+    navigate('/login', { 
+      state: { 
+        registrationSuccess: true,
+        message: "Registration successful! Please login to use the system." 
+      }
+    });
   };
 
   return (

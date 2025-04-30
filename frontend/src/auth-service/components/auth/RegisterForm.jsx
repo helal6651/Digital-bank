@@ -10,7 +10,6 @@ const RegisterForm = ({ onRegisterSuccess }) => {
     password: '',
     confirmPassword: '',
   });
-
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,7 +31,11 @@ const RegisterForm = ({ onRegisterSuccess }) => {
       setIsLoading(true);
       const { username, email, password } = formData;
       const response = await register({ username, email, password });
-      console.log(response?data?.message[0] : "No message");
+      
+      if (response.code !== "201") {
+        throw new Error(response.message?.[0] || "Registration failed with code: " + response.code);
+      }
+      console.log(response.message?.[0] ?? "No message");
       onRegisterSuccess();
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');

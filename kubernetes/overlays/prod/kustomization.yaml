@@ -6,7 +6,6 @@ resources:
   - ../../base/kafdrop
   - ../../base/postgres
   - ../../base/api-gateway
-  - ../../base/account-service
   - ../../base/namespace
   - ../../base/vault
   - ../../base/user-service

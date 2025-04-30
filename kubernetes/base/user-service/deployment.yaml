@@ -18,17 +18,21 @@ spec:
       initContainers:
         - name: wait-for-vault
           image: alpine:3.18
-          command: ['sh', '-c', '
-            set -ex
-            apk update && apk add --no-cache curl ca-certificates
-            VAULT_SVC_URL="http://vault.digital-bank.svc.cluster.local:8200"
-            echo "[Init] Waiting for Vault to be ready at $VAULT_SVC_URL/v1/sys/health ..."
-            until curl -fs "$VAULT_SVC_URL/v1/sys/health"; do
+          command: [
+              "sh",
+              "-c",
+              '
+              set -ex
+              apk update && apk add --no-cache curl ca-certificates
+              VAULT_SVC_URL="http://vault.digital-bank.svc.cluster.local:8200"
+              echo "[Init] Waiting for Vault to be ready at $VAULT_SVC_URL/v1/sys/health ..."
+              until curl -fs "$VAULT_SVC_URL/v1/sys/health"; do
               echo "[Init] Vault is not ready yet. Retrying in 5 seconds...";
               sleep 5;
-            done;
-            echo "[Init] Vault is ready. Proceeding with startup."
-           ']
+              done;
+              echo "[Init] Vault is ready. Proceeding with startup."
+              ',
+            ]
       containers:
         - name: user-service
           image: bjitpdmad/user-service:latest

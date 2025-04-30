@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import Button from '../common/Button';
 
-const LoginForm = ({ onSubmit }) => {
+const LoginForm = ({ onSubmit, isLoading, errorMessage }) => {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: ''
   });
 
@@ -19,16 +19,18 @@ const LoginForm = ({ onSubmit }) => {
 
   return (
     <form onSubmit={handleSubmit} className="login-form">
+      {errorMessage && <div className="error-message">{errorMessage}</div>}
       <div className="form-group">
         <input
-          type="email"
-          id="email"
-          name="email"
+          type="text"
+          id="username"
+          name="username"
           className="input"
-          placeholder="Enter your email"
-          value={formData.email}
+          placeholder="Enter your username"
+          value={formData.username}
           onChange={handleChange}
           required
+          disabled={isLoading}
         />
       </div>
       <div className="form-group">
@@ -41,9 +43,12 @@ const LoginForm = ({ onSubmit }) => {
           value={formData.password}
           onChange={handleChange}
           required
+          disabled={isLoading}
         />
       </div>
-      <Button type="submit">Login</Button>
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? 'Logging in...' : 'Login'}
+      </Button>
     </form>
   );
 };
