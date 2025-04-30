@@ -1,8 +1,8 @@
 package com.user_service.utils;
 
 
-import com.user_service.model.entity.User;
-import com.user_service.repository.UserRepository;
+import com.common_service.model.entity.User;
+import com.common_service.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

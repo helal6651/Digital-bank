@@ -21,6 +21,8 @@ public enum ResultCodeConstants {
     TOKEN_EXPIRED,
     AUTH_FAILURE,
     INVALID_PASSWORD_PATTERN,
+    USER_NOT_FOUND,
+    WRONG_CREDENTIALS,
     ResultCodeConstants() {
     }
 }

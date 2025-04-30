@@ -44,5 +44,6 @@ AND NOT EXISTS (
 );
 
 -- Insert admin user with hashed password
-
+DELETE FROM user_roles
+WHERE user_id NOT IN (SELECT id FROM tbl_users);
 COMMIT;

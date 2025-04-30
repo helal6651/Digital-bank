@@ -1,3 +1,4 @@
+/*
 package com.user_service.repository;
 
 import com.user_service.model.entity.User;
@@ -12,3 +13,4 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     User findByUsernameOrEmail(String username, String email);
 }
+*/

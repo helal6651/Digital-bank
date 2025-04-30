@@ -1,10 +1,10 @@
 package com.user_service.service;
 
 
-import com.user_service.model.entity.Permission;
-import com.user_service.model.entity.Role;
-import com.user_service.model.entity.User;
-import com.user_service.repository.UserRepository; // Replace with your actual repository
+import com.common_service.model.entity.Permission;
+import com.common_service.model.entity.Role;
+import com.common_service.model.entity.User;
+import com.common_service.repository.UserRepository;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
