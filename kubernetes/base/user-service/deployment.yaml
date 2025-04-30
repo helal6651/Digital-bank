@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
+  namespace: digital-bank
   labels:
     app: user-service
 spec:
@@ -14,43 +15,75 @@ spec:
       labels:
         app: user-service
     spec:
+      initContainers:
+        - name: wait-for-vault
+          image: alpine:3.18
+          command: [
+              "sh",
+              "-c",
+              '
+              set -ex
+              apk update && apk add --no-cache curl ca-certificates
+              VAULT_SVC_URL="http://vault.digital-bank.svc.cluster.local:8200"
+              echo "[Init] Waiting for Vault to be ready at $VAULT_SVC_URL/v1/sys/health ..."
+              until curl -fs "$VAULT_SVC_URL/v1/sys/health"; do
+              echo "[Init] Vault is not ready yet. Retrying in 5 seconds...";
+              sleep 5;
+              done;
+              echo "[Init] Vault is ready. Proceeding with startup."
+              ',
+            ]
       containers:
         - name: user-service
           image: bjitpdmad/user-service:latest
           ports:
             - containerPort: 9491
+              name: http
           env:
+            # Vault Configuration
+            - name: VAULT_ADDR
+              value: "http://vault.digital-bank.svc.cluster.local:8200"
+            - name: VAULT_ROLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: vault-approle-credentials
+                  key: role_id
+            - name: VAULT_SECRET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: vault-approle-credentials
+                  key: secret_id
+
+            # Database Configuration
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://postgres:5432/user-service-db
+              value: jdbc:postgresql://postgres2.digital-bank.svc.cluster.local:5432/user-service-db
             - name: SPRING_DATASOURCE_USERNAME
               value: postgres
             - name: SPRING_DATASOURCE_PASSWORD
               value: secure_password_2025
+
+            # Kafka Configuration
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
-              value: kafka:9092
-            - name: SPRING_KAFKA_PRODUCER_BOOTSTRAP_SERVERS
-              value: kafka:9092
-            - name: SPRING_KAFKA_CONSUMER_BOOTSTRAP_SERVERS
-              value: kafka:9092
+              value: kafka.digital-bank.svc.cluster.local:9092
             - name: SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET
               value: earliest
-            - name: SPRING_KAFKA_PRODUCER_KEY_SERIALIZER
-              value: org.apache.kafka.common.serialization.StringSerializer
-            - name: SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER
-              value: org.springframework.kafka.support.serializer.JsonSerializer
             - name: SPRING_APPLICATION_NAME
               value: user-service
             - name: SERVER_PORT
               value: "9491"
-            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-              value: update
-            - name: SPRING_JPA_SHOW_SQL
-              value: "true"
-            - name: SPRING_CLOUD_CONFIG_ENABLED
-              value: "false"
-            - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
-              value: org.hibernate.dialect.PostgreSQLDialect
-            - name: ROLE_ID
-              value: kdsfdsfdsf
-            - name: SECRET_ID
-              value: kdsfdsfdsf
+
+          # --- Liveness Probe (commented) ---
+          # livenessProbe:
+          #   httpGet:
+          #     path: /actuator/health/liveness
+          #     port: 9491
+          #   initialDelaySeconds: 60
+          #   periodSeconds: 10
+
+          # --- Readiness Probe (commented) ---
+          # readinessProbe:
+          #   httpGet:
+          #     path: /actuator/health/readiness
+          #     port: 9491
+          #   initialDelaySeconds: 30
+          #   periodSeconds: 5

@@ -6,93 +6,292 @@ metadata:
 data:
   init.sh: |
     #!/bin/sh
-    set -eo pipefail
+    # Use Unofficial Bash Strict Mode
+    set -euo pipefail # Enable -e immediately now
 
-    export VAULT_ADDR='http://127.0.0.1:8200'
-    LOG_FILE=/vault/data/init.log
+    echo "###########################################################"
+    echo "########## Vault Initialization Script Starting ###########"
+    echo "###########################################################"
+    echo "Time: $(date)"
 
-    vault server -config='/vault/config/vault.json'
+    # --- Verify Prerequisite Commands ---
+    echo "[Check] Verifying required commands (vault, jq, kubectl, openssl)..."
+    for cmd in vault jq kubectl openssl; do
+      if ! command -v "$cmd" >/dev/null; then
+        echo "[Error] '$cmd' command not found in PATH. Current PATH=$PATH"
+        exit 1
+      fi
+      echo "  - $cmd found at: $(command -v $cmd)"
+    done
+    ls -l "$(command -v vault)" || echo "  - Warning: could not list permissions for vault CLI"
+    echo "[Check] Prerequisite commands verified."
 
-    exec > >(tee -a "$LOG_FILE") 2>&1
-    echo "Vault initialization started at $(date)"
+    # --- Configuration ---
+    export VAULT_ADDR="http://127.0.0.1:8200" # Vault server address within the Pod
+    SECRETS_DIR="/vault/data"                # Persistent storage location
+    UNSEAL_KEY_FILE="$SECRETS_DIR/unseal.key"
+    ROOT_TOKEN_FILE="$SECRETS_DIR/root.token"
+    echo "[Info] VAULT_ADDR set to: $VAULT_ADDR"
+    echo "[Info] Secrets directory set to: $SECRETS_DIR"
+    mkdir -p "$SECRETS_DIR" # Ensure directory exists
 
-    # Wait for Vault API
-    until vault status >/dev/null 2>&1; do
-      echo "Waiting for Vault API..."
+    # --- Wait for Vault API to Respond ---
+    ATTEMPTS=0
+    MAX_ATTEMPTS=30
+    STATUS=-1
+    echo "[Wait] Waiting for Vault API server to respond at $VAULT_ADDR..."
+    while true; do
+      echo "  [Wait] Attempting: vault status (Attempt $((ATTEMPTS+1))/$MAX_ATTEMPTS)"
+      STATUS_OUTPUT=$(vault status -format=json 2>&1) # Get JSON output
+      CURRENT_STATUS=$?
+
+      echo "    -> vault status command finished."
+      echo "    -> Exit Code: $CURRENT_STATUS"
+      # Check if output is valid JSON before printing,jq handles errors gracefully
+      if echo "$STATUS_OUTPUT" | jq . > /dev/null 2>&1; then
+        echo "    -> JSON Output:"
+        echo "$STATUS_OUTPUT" | jq . | sed 's/^/       /' # Pretty print JSON output
+      else
+         echo "    -> Raw Output (Not valid JSON or Error):"
+         echo "$STATUS_OUTPUT" | sed 's/^/       /'
+      fi
+      echo "  ------------------------------------"
+
+      # vault status: 0=unsealed, 2=sealed/uninitialized, 1=error
+      if [ $CURRENT_STATUS -eq 0 ] || [ $CURRENT_STATUS -eq 2 ]; then
+        echo "[Wait] Vault API responded with expected status code ($CURRENT_STATUS)."
+        STATUS=$CURRENT_STATUS # Store the final successful status
+        break
+      fi
+
+      echo "  [Wait] Status code ($CURRENT_STATUS) is not 0 or 2. Retrying..."
+      ATTEMPTS=$((ATTEMPTS + 1))
+      if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
+        echo "[Error] Vault API did not return status 0 or 2 at $VAULT_ADDR after $MAX_ATTEMPTS attempts."
+        exit 1
+      fi
+      echo "  [Wait] Sleeping for 2 seconds..."
       sleep 2
     done
+    echo "[Wait] Vault API wait loop completed."
 
-    # Check initialization status
-    INIT_STATUS=$(vault status -format=json | jq -r .initialized)
+    # --- Initialization or Unseal Logic ---
+    echo "[Action] Checking Vault initialization/seal status (Code: $STATUS)..."
 
-    if [ "$INIT_STATUS" = "false" ]; then
-      echo "Initializing Vault..."
-      INIT_OUTPUT=$(vault operator init -format=json -key-shares=1 -key-threshold=1)
-      echo "$INIT_OUTPUT" > /vault/data/init.json
+    # Use JSON output and jq for reliable check
+    # 'vault status -format=json' returns { "initialized": true/false, ... }
+    # 'jq -e .initialized' exits 0 if true, 1 if false/null/missing
+    IS_INITIALIZED_CMD="vault status -format=json | jq -e .initialized"
 
-      UNSEAL_KEY=$(echo "$INIT_OUTPUT" | jq -r '.unseal_keys_b64[0]')
-      ROOT_TOKEN=$(echo "$INIT_OUTPUT" | jq -r '.root_token')
+    if [ $STATUS -eq 2 ]; then
+        echo "  [Info] Vault status is 2. Checking '.initialized' field via JSON..."
+        # Check if initialized (returns 0) or not (returns 1)
+        if $IS_INITIALIZED_CMD; then
+            # ------ STATE: INITIALIZED BUT SEALED ------
+            echo "  [State] Vault IS Initialized (according to JSON) but SEALED."
+            echo "  [Action] Attempting to unseal..."
+            # (Unseal logic remains the same as before)
+            if [ ! -f "$UNSEAL_KEY_FILE" ]; then
+                echo "  [Error] Unseal key file ($UNSEAL_KEY_FILE) not found! Cannot unseal."
+                exit 1
+            fi
+            UNSEAL_KEY=$(cat "$UNSEAL_KEY_FILE")
+            if [ -z "$UNSEAL_KEY" ]; then
+                echo "  [Error] Unseal key file ($UNSEAL_KEY_FILE) is empty!"
+                exit 1
+            fi
+            echo "  [Info] Unseal key loaded from file."
 
-      echo "$UNSEAL_KEY" > /vault/data/unseal.key
-      echo "$ROOT_TOKEN" > /vault/data/root.token
-      chmod 600 /vault/data/unseal.key /vault/data/root.token
+            COUNTER=0
+            MAX_UNSEAL_ATTEMPTS=5
+            until vault status -format=json 2>/dev/null | jq -e '.sealed == false' > /dev/null; do
+              COUNTER=$((COUNTER+1))
+              echo "    [Action] Unsealing Vault (attempt $COUNTER/$MAX_UNSEAL_ATTEMPTS)..."
+              vault operator unseal "$UNSEAL_KEY"
+              if [ $COUNTER -ge $MAX_UNSEAL_ATTEMPTS ]; then
+                echo "  [Error] Failed to unseal Vault after $MAX_UNSEAL_ATTEMPTS attempts."
+                exit 1
+              fi
+              # Check status again immediately before sleeping
+              if vault status -format=json 2>/dev/null | jq -e '.sealed == false' > /dev/null; then
+                break # Success! Exit the loop.
+              fi
+              sleep 2 # Wait before next attempt
+            done
+            echo "  [Success] Vault unsealed successfully."
+
+            # Load root token for subsequent operations
+            if [ ! -f "$ROOT_TOKEN_FILE" ]; then
+                 echo "  [Error] Vault unsealed, but root token file ($ROOT_TOKEN_FILE) not found!"
+                 exit 1
+            fi
+            export VAULT_TOKEN=$(cat "$ROOT_TOKEN_FILE")
+            if [ -z "$VAULT_TOKEN" ]; then
+                echo "  [Error] Root token file ($ROOT_TOKEN_FILE) is empty!"
+                exit 1
+            fi
+            echo "  [Info] Root token loaded from $ROOT_TOKEN_FILE."
+
+        else
+            # ------ STATE: UNINITIALIZED ------
+             echo "  [State] Vault is UNINITIALIZED (according to JSON)."
+             echo "  [Action] Initializing Vault..."
+             # (Initialization logic remains the same as before)
+             INIT_OUTPUT=$(vault operator init -format=json -key-shares=1 -key-threshold=1)
+             if [ -z "$INIT_OUTPUT" ]; then echo "  [Error] 'vault operator init' returned empty output."; exit 1; fi
+             echo "  [Info] Initialization command executed."
+
+             UNSEAL_KEY=$(echo "$INIT_OUTPUT" | jq -r '.unseal_keys_b64[0]')
+             ROOT_TOKEN=$(echo "$INIT_OUTPUT" | jq -r '.root_token')
+
+             if [ -z "$UNSEAL_KEY" ] || [ "$UNSEAL_KEY" == "null" ]; then echo "  [Error] Failed to parse unseal key."; exit 1; fi
+             if [ -z "$ROOT_TOKEN" ] || [ "$ROOT_TOKEN" == "null" ]; then echo "  [Error] Failed to parse root token."; exit 1; fi
+             echo "  [Info] Unseal key and root token extracted."
+
+             echo "$UNSEAL_KEY" > "$UNSEAL_KEY_FILE"
+             echo "$ROOT_TOKEN" > "$ROOT_TOKEN_FILE"
+             chmod 600 "$UNSEAL_KEY_FILE" "$ROOT_TOKEN_FILE"
+             echo "  [Info] Unseal key saved to $UNSEAL_KEY_FILE"
+             echo "  [Info] Root token saved to $ROOT_TOKEN_FILE"
+
+             export VAULT_TOKEN="$ROOT_TOKEN"
+             echo "  [Info] VAULT_TOKEN exported for current session."
+
+             echo "  [Action] Unsealing Vault for the first time..."
+             vault operator unseal "$UNSEAL_KEY" > /dev/null # Suppress output unless debugging
+             sleep 1
+
+             if ! vault status -format=json 2>/dev/null | jq -e '.sealed == false' > /dev/null; then
+                  echo "  [Error] Failed to unseal Vault immediately after initialization."
+                  exit 1
+             fi
+             echo "  [Success] Vault initialized and unsealed."
+        fi
+
+    elif [ $STATUS -eq 0 ]; then
+        # ------ STATE: ALREADY INITIALIZED AND UNSEALED ------
+        echo "  [State] Vault is already Initialized and UNSEALED."
+        # (Load token logic remains the same as before)
+        if [ ! -f "$ROOT_TOKEN_FILE" ]; then
+             echo "  [Error] Vault unsealed, but root token file ($ROOT_TOKEN_FILE) not found!"
+             exit 1
+        fi
+        export VAULT_TOKEN=$(cat "$ROOT_TOKEN_FILE")
+        if [ -z "$VAULT_TOKEN" ]; then
+             echo "  [Error] Root token file ($ROOT_TOKEN_FILE) is empty!"
+             exit 1
+        fi
+        echo "  [Info] Root token loaded from existing file $ROOT_TOKEN_FILE."
     else
-      echo "Vault already initialized"
-      UNSEAL_KEY=$(cat /vault/data/unseal.key)
-      ROOT_TOKEN=$(cat /vault/data/root.token)
+        # Should not happen
+        echo "[Error] Script reached unexpected state after wait loop. Status code was $STATUS."
+        exit 1
+    fi
+    echo "[Action] Initialization/Unseal phase complete."
+
+    # --- Post-Initialization/Unseal Setup ---
+    echo "[Setup] Performing standard Vault setup tasks..."
+
+    # (Verify authentication logic remains the same)
+    echo "  [Setup] Verifying authentication with loaded VAULT_TOKEN..."
+    if ! vault token lookup > /dev/null 2>&1; then
+        echo "  [Error] Failed to authenticate with Vault using the loaded token."
+        exit 1
+    fi
+    echo "  [Setup] Authentication successful."
+
+    # (KV enablement logic remains the same)
+    KV_PATH="secret"
+    echo "  [Setup] Checking KV v2 secrets engine at '$KV_PATH/'..."
+    if ! vault secrets list -format=json | jq -e --arg kvpath "$KV_PATH/" '.[$kvpath]' > /dev/null; then
+      echo "    [Action] Enabling KV v2 secrets engine at '$KV_PATH/'..."
+      vault secrets enable -path="$KV_PATH" kv-v2
+    else
+      echo "    [Info] KV v2 secrets engine already enabled at '$KV_PATH/'."
     fi
 
-    echo "Unsealing Vault..."
-    until vault operator unseal "$UNSEAL_KEY"; do
-      echo "Unseal attempt failed, retrying..."
-      sleep 2
-    done
+    # (Write example secrets logic remains the same)
+    echo "  [Setup] Writing example secrets..."
+    vault kv put "$KV_PATH/database/postgres" username=postgres password=secure_password_from_script_v4
+    vault kv put "$KV_PATH/applications/user-service" api-key=user-service-api-key-from-script jwt-secret=your-jwt-secret-from-script
+    echo "    [Info] Example secrets written."
 
-    while ! vault status | grep -q 'Sealed: false'; do
-      echo "Waiting for unseal completion..."
-      sleep 1
-    done
-
-    export VAULT_TOKEN="$ROOT_TOKEN"
-
-    # Enable secrets engine
-    if ! vault secrets list | grep -q 'secret/'; then
-      vault secrets enable -path=secret kv-v2
+    # (AppRole enablement logic remains the same)
+    APPROLE_PATH="approle"
+    echo "  [Setup] Checking AppRole auth method at '$APPROLE_PATH/'..."
+    if ! vault auth list -format=json | jq -e --arg approlepath "$APPROLE_PATH/" '.[$approlepath]' > /dev/null; then
+      echo "    [Action] Enabling AppRole auth method at '$APPROLE_PATH/'..."
+      vault auth enable "$APPROLE_PATH"
+    else
+      echo "    [Info] AppRole auth method already enabled at '$APPROLE_PATH/'."
     fi
 
-    # Write test secrets
-    vault kv put secret/database/postgres username=postgres password=secure_password
-    vault kv put secret/applications/user-service api-key=user-service-api-key jwt-secret=your-jwt-secret-here
+    # (AppRole role configuration logic remains the same)
+    APPROLE_ROLE_NAME="user-service"
+    echo "  [Setup] Configuring AppRole role '$APPROLE_ROLE_NAME'..."
+    vault write auth/approle/role/"$APPROLE_ROLE_NAME" \
+      secret_id_ttl=10m \
+      token_num_uses=20 \
+      token_ttl=20m \
+      token_max_ttl=30m \
+      policies="default" \
+      secret_id_num_uses=5
+    echo "    [Info] AppRole role '$APPROLE_ROLE_NAME' configured."
 
-    # Generate RSA keys
-    openssl genrsa -out /tmp/private.pem 2048
-    openssl rsa -in /tmp/private.pem -pubout -out /tmp/public.pem
-    vault kv put secret/rsa-key-password \
-      private_key="$(cat /tmp/private.pem)" \
-      public_key="$(cat /tmp/public.pem)"
-    rm /tmp/private.pem /tmp/public.pem
+    # (AppRole RoleID/SecretID logic remains the same)
+    echo "  [Setup] Retrieving RoleID for '$APPROLE_ROLE_NAME'..."
+    ROLE_ID=$(vault read -field=role_id auth/approle/role/"$APPROLE_ROLE_NAME"/role-id)
+    if [ -z "$ROLE_ID" ]; then echo "  [Error] Failed to retrieve RoleID."; exit 1; fi
+    echo "    [Info] RoleID retrieved."
 
-    # Create policies
-    echo 'path "secret/data/applications/user-service" { capabilities = ["read"] }
-    path "secret/data/rsa-key-password" { capabilities = ["read"] }' | vault policy write app-policy -
+    echo "  [Setup] Generating SecretID for '$APPROLE_ROLE_NAME'..."
+    SECRET_ID=$(vault write -f -field=secret_id auth/approle/role/"$APPROLE_ROLE_NAME"/secret-id)
+    if [ -z "$SECRET_ID" ]; then echo "  [Error] Failed to generate SecretID."; exit 1; fi
+    echo "    [Info] SecretID generated."
 
-    # Configure AppRole
-    vault auth enable approle >/dev/null 2>&1 || true
-    vault write auth/approle/role/user-service \
-      token_policies=app-policy \
-      token_ttl=1h \
-      token_max_ttl=4h
+    # -- Store generated RSA Keys in Vault --
+    echo "  [Setup] Generating new RSA keys..."
+    openssl genrsa -out private.pem 2048
+    openssl rsa -in private.pem -pubout -out public.pem
 
-    # Get Role ID and Secret ID
-    ROLE_ID=$(vault read -field=role_id auth/approle/role/user-service/role-id)
-    SECRET_ID=$(vault write -f -field=secret_id auth/approle/role/user-service/secret-id)
+    PRIVATE_KEY=$(cat private.pem)
+    PUBLIC_KEY=$(cat public.pem)
 
-    # Create Kubernetes secret
-    kubectl create secret generic vault-approle-credentials \
-      --namespace="$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)" \
+    if [ -z "$PRIVATE_KEY" ] || [ -z "$PUBLIC_KEY" ]; then
+        echo "  [Error] Failed to read generated RSA keys from files."
+        rm -f private.pem public.pem # Clean up
+        exit 1
+    fi
+    echo "    [Info] RSA keys generated and read."
+    rm -f private.pem public.pem # Clean up key files immediately after reading
+    echo "    [Info] Temporary key files removed."
+
+    KEY_PATH="$KV_PATH/rsa-key-pair" # Store under the 'secret/' path
+    echo "  [Setup] Storing RSA keys in Vault at '$KEY_PATH'..."
+    # Use VAULT_TOKEN which should be set; remove explicit -token unless needed for specific override
+    vault kv put "$KEY_PATH" private_key="$PRIVATE_KEY" public_key="$PUBLIC_KEY"
+    echo "    [Info] RSA keys stored in Vault."
+
+
+    # -- Create/Update Kubernetes Secret --
+    K8S_SECRET_NAME="vault-approle-credentials"
+    NAMESPACE="digital-bank" # Correct variable name
+    echo "  [Setup] Creating/Updating Kubernetes secret '$K8S_SECRET_NAME' in namespace '$NAMESPACE'..."
+    # Fixed typo: $N AMESPACE -> $NAMESPACE
+    if kubectl create secret generic "$K8S_SECRET_NAME" \
+      --namespace="$NAMESPACE" \
       --from-literal=role_id="$ROLE_ID" \
       --from-literal=secret_id="$SECRET_ID" \
-      --dry-run=client -o yaml | kubectl apply -f -
+      --dry-run=client -o yaml | kubectl apply -f -; then
+        echo "    [Success] Kubernetes secret '$K8S_SECRET_NAME' created/updated."
+    else
+        echo "  [Error] Failed to create/update Kubernetes secret '$K8S_SECRET_NAME'. Check SA permissions."
+        # exit 1 # Optionally exit if this is critical
+    fi
+    echo "[Setup] Standard setup tasks complete."
 
-    echo "Vault initialization completed successfully at $(date)"
-    tail -f /dev/null
+    # --- Finalizing ---
+    echo "###########################################################"
+    echo "######## Vault Initialization Script Completed ############"
+    echo "###########################################################"
+    echo "Time: $(date)"
