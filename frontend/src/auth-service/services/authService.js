@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = 'http://user-service/v1/user/';
+const API_URL = 'http://localhost:9491/v1/api/user/';
+//const API_URL = 'http://127.0.0.1:51220/v1/api/user/';
+const API_URL_LOGIN = "http://localhost:9491/v1/api/";
 
 export const register = async (userData) => {
   console.log("register() function from authService.js : ");
@@ -15,10 +17,43 @@ export const register = async (userData) => {
 };
 
 export const login = async (userData) => {
-  const response = await axios.post(`${API_URL}login`, userData);
-  return response.data;
+  try {
+    const response = await axios.post(`${API_URL_LOGIN}authenticate`, userData);
+    
+    // If login is successful, store tokens
+    if (response.data.code === "200") {
+      storeTokens(response.data.result);
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
+  }
 };
 
+// Store JWT tokens securely
+export const storeTokens = (tokens) => {
+  localStorage.setItem('accessToken', tokens.accessToken);
+  localStorage.setItem('refreshToken', tokens.refreshToken);
+  
+  // Set default Authorization header for all future requests
+  axios.defaults.headers.common['Authorization'] = `Bearer ${tokens.accessToken}`;
+};
+
+// Get the current access token
+export const getAccessToken = () => {
+  return localStorage.getItem('accessToken');
+};
+
+// Check if user is authenticated
+export const isAuthenticated = () => {
+  return !!getAccessToken();
+};
+
+// Logout user
 export const logout = () => {
-  localStorage.removeItem('user');
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+  delete axios.defaults.headers.common['Authorization'];
 };
