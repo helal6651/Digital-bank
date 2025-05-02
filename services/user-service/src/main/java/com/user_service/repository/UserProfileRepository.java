@@ -1,3 +1,4 @@
+/*
 package com.user_service.repository;
 
 import com.user_service.model.entity.UserProfile;
@@ -8,3 +9,4 @@ import java.util.Optional;
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
     Optional<UserProfile> findByUserId(Long userId);
 }
+*/

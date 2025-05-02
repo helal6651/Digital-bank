@@ -21,6 +21,10 @@ public final class ErrorCode {
     public static final String UNAUTHORIZED_OPERATION = "4025";
     public static final String INVALID_DATA = "4026";
     public static final String ACCESS_DENIED = "4027";
+    public static final String USER_NOT_FOUND = "4028";
+    public static final String WRONG_CREDENTIALS = "4029";
+    public static final String USERNAME_LENGTH = "4030";
+    public static final String INVALID_EMAIL = "4031";
     public static final String INTERNAL_SERVER_ERROR = "5000";
     public static final int MAINTENANCE_MODE = 9999;
 

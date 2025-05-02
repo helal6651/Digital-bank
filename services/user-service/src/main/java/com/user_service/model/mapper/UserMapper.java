@@ -1,6 +1,6 @@
 package com.user_service.model.mapper;
 
-import com.user_service.model.entity.User;
+import com.common_service.model.entity.User;
 import com.user_service.response.user.UserResponse;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;

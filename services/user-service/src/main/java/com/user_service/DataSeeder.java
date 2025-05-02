@@ -1,13 +1,13 @@
 package com.user_service;
 
-import com.user_service.enums.UserRole;
-import com.user_service.enums.UserStatus;
-import com.user_service.model.entity.Permission;
-import com.user_service.model.entity.Role;
-import com.user_service.model.entity.User;
-import com.user_service.repository.PermissionRepository;
-import com.user_service.repository.RoleRepository;
-import com.user_service.repository.UserRepository;
+import com.common_service.enums.UserRole;
+import com.common_service.enums.UserStatus;
+import com.common_service.model.entity.Permission;
+import com.common_service.model.entity.Role;
+import com.common_service.model.entity.User;
+import com.common_service.repository.PermissionRepository;
+import com.common_service.repository.RoleRepository;
+import com.common_service.repository.UserRepository;
 import com.user_service.utils.Permissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;

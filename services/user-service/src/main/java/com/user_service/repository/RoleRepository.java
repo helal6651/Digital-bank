@@ -1,3 +1,4 @@
+/*
 package com.user_service.repository;
 
 import com.user_service.model.entity.Role;
@@ -10,3 +11,4 @@ import java.util.Optional;
 public interface RoleRepository extends JpaRepository<Role, Long> {
     Optional<Role> findByName(String name);
 }
+*/
