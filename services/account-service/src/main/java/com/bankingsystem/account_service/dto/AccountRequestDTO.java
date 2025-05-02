@@ -16,8 +16,7 @@ public class AccountRequestDTO {
     @NotNull(message = "User ID is required")
     private Long userId; // The user to whom the account will be associated
 
-    @NotBlank(message = "Account number is required")
-    @Size(max = 20, message = "Account number must not exceed 20 characters")
+
     private String accountNumber; // Unique account number
 
     @NotBlank(message = "Account type is required")

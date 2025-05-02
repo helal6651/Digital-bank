@@ -3,11 +3,13 @@ resources:
   - ../../base/kafdrop
   - ../../base/postgres
   - ../../base/api-gateway
+  - ../../base/account-service
   - ../../base/namespace
   - ../../base/vault
   - ../../base/user-service
   - ../../base/notification-service
   - ../../base/front-end
+  - ../../base/redis    # Include Redis configuration
 
 configMapGenerator:
   - name: prod-config
@@ -16,7 +18,9 @@ configMapGenerator:
 
 images:
   - name: bjitpdmad/api-gateway-service
-    newTag: latest 
+    newTag: latest
+  - name: bjitpdmad/account-service
+    newTag: latest
   - name: obsidiandynamics/kafdrop
     newTag: latest
   - name: bitnami/kafka
