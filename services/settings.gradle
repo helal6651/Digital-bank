@@ -1,5 +1,0 @@
-rootProject.name = 'digital-bank'
-include 'common-service'
-include 'user-service'
-include 'notification-service'
-include 'check-payment-due-service'
