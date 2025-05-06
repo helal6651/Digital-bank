@@ -1,5 +1,6 @@
 package com.user_service;
 
+import com.common_service.enums.AuthProvider;
 import com.common_service.enums.UserRole;
 import com.common_service.enums.UserStatus;
 import com.common_service.model.entity.Permission;
@@ -85,6 +86,7 @@ public class DataSeeder implements CommandLineRunner {
                     .email("digital_bank@gmail.com")
                     .passwordHash(hashedPassword)
                     .status(UserStatus.ACTIVE)
+                    .provider(AuthProvider.LOCAL)
                     .mfaEnabled(false)
                     .roles(new HashSet<>())
                     .build();

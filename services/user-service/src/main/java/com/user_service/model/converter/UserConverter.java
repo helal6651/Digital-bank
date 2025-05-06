@@ -21,6 +21,7 @@ public class UserConverter implements Converter<User, UserResponse> {
                         .map(Role::getName)
                         .collect(Collectors.toSet()))
                 .status(user.getStatus())
+                .provider(user.getProvider())
                 .mfaEnabled(user.getMfaEnabled())
                 .createdAt(user.getCreatedAt())
                 .lastLogin(user.getLastLogin())
