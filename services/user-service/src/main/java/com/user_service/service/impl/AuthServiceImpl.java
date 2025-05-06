@@ -53,7 +53,6 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenService tokenService;
     private final UserSecretsManager userSecretsManager;
     private final JwtSettings jwtSettings;
-    private final Pattern emailPattern = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     private final UserRepository userRepository;
     private final Argon2PasswordEncoder passwordEncoder;
 
@@ -85,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthenticationResponseDTO authenticate(LoginRequest request) throws Exception {
         log.info("User name: {}", request.getUsername());
         SecretDto secretDto = userSecretsManager.getSecretDto();
-        Matcher matcher = emailPattern.matcher(request.getUsername());
+        Matcher matcher = ApplicationConstants.emailPattern.matcher(request.getUsername());
         Optional<User> userModel = null;
         if (matcher.matches()) {
             log.info("User is email");

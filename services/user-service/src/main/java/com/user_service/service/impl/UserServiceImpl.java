@@ -1,5 +1,6 @@
 package com.user_service.service.impl;
 
+import com.common_service.enums.AuthProvider;
 import com.common_service.enums.UserRole;
 import com.common_service.enums.UserStatus;
 import com.common_service.model.entity.Role;
@@ -64,6 +65,7 @@ public class UserServiceImpl implements UserService {
                 .email(request.getEmail())
                 .passwordHash(hashedPassword)
                 .status(UserStatus.ACTIVE)
+                .provider(AuthProvider.LOCAL)
                 .mfaEnabled(false)
                 .roles(new HashSet<>()) // Initialize the roles set
                 .build();
