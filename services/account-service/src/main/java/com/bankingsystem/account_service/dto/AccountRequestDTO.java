@@ -1,6 +1,7 @@
 package com.bankingsystem.account_service.dto;
 
 import com.bankingsystem.account_service.model.Currency;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -18,6 +19,8 @@ public class AccountRequestDTO {
 
 
     private String accountNumber; // Unique account number
+    @NotBlank(message = "Account name is required")
+    private String accountName;
 
     @NotBlank(message = "Account type is required")
     @Pattern(regexp = "^(savings|checking)$", message = "Account type must be either 'savings' or 'checking'")

@@ -29,6 +29,8 @@ public class Account {
     @Column(name = "account_number", nullable = false, unique = true, length = 20, updatable = false)
     private String accountNumber; // Auto-generated
 
+    @Column(name = "account_name", nullable = false, length = 30)
+    private String accountName;
     @Column(name = "account_type", nullable = false, length = 20)
     private String accountType;
 
