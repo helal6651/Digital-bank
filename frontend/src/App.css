@@ -126,11 +126,6 @@ form {
   width: 80%; 
 }
 
-.register-btn {
-  background-color: #faf1e6 !important;
-  color: #212529 !important;   
-}
-
 
 .login-form {
   display: flex;
@@ -255,5 +250,28 @@ html {
   display: block;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Add this to your existing CSS file */
+.success-message {
+  color: #28a745; /* Green text color */
+  background-color: #d4edda; /* Light green background */
+  border: 1px solid #c3e6cb; /* Light green border */
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.navbar .btn-outline-light {
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.navbar .btn-outline-light:hover {
+  background-color: #f8f9fa;
+  color: #212529;
+  transform: translateY(-2px);
 }
 
