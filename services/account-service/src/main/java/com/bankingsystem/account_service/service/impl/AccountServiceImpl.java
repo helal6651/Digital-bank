@@ -12,6 +12,8 @@ import com.bankingsystem.account_service.repository.UserRepository;
 import com.bankingsystem.account_service.response.BankingResponseUtil;
 import com.bankingsystem.account_service.service.AccountService;
 import com.bankingsystem.account_service.service.kafka.KafkaProducer;
+
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -52,6 +54,26 @@ public class AccountServiceImpl implements AccountService {
       });
    }
 
+   /**
+    * Fetch all accounts by user ID.
+    *
+    * @param userId the ID of the user
+    * @return list of AccountResponseDTO
+    */
+   public List<AccountResponseDTO> getAccountsByUserId(Long userId) {
+      // Ensure the user exists before fetching accounts
+      User user = this.userRepository.findById(userId).orElseThrow(() -> {
+         return new UserNotFoundException("User not found with id: " + userId);
+      });
+
+      // Fetch accounts linked to the user
+      List<Account> accounts = this.accountRepository.findAllByUser_Id(userId);
+
+      // Map entities to response DTOs
+      return accounts.stream()
+              .map(this.accountMapper::toResponseDto)
+              .toList();
+   }
    public AccountServiceImpl(final AccountRepository accountRepository, final UserRepository userRepository, final AccountMapper accountMapper, final KafkaProducer kafkaProducer, final KafkaTemplate<String, String> kafkaTemplate) {
       this.accountRepository = accountRepository;
       this.userRepository = userRepository;
