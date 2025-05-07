@@ -47,6 +47,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server:3.4.4")
 	implementation("org.springframework.cloud:spring-cloud-starter-vault-config:4.2.1")
 	implementation("org.apache.commons:commons-lang3:3.0")
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 	implementation project(':common-service')
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

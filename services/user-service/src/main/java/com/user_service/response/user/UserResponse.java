@@ -1,5 +1,6 @@
 package com.user_service.response.user;
 
+import com.common_service.enums.AuthProvider;
 import com.common_service.enums.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,6 +20,7 @@ public class UserResponse {
     private String email;
     UserStatus status;
     private Set<String> roles;
+    private AuthProvider provider;
     private Boolean mfaEnabled;
     LocalDateTime createdAt;
     LocalDateTime lastLogin;
