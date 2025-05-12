@@ -264,14 +264,64 @@ After restarting the service, verify it's running correctly on `v4465a.unx.vstag
 
 ## Scheduled Tasks / Cron Jobs
 
-(Detailed description remains the same as previous version - elaborating on each job)
+Several automated tasks are configured via cron on the server `v4465a.unx.vstage.co` to ensure the health, security, and maintainability of the Watermark Service and related components. These tasks run automatically at predefined intervals. You can inspect the full list and exact timings using the command `crontab -l` when logged into the server as the relevant user.
 
-*   **Watermark Service Monitoring (Production):** (`*/3 * * * *`) `/data/watermark_service/monitor_watermark_service.sh` -> `/var/log/monitor_watermark_service.log`.
-*   **HashiCorp Vault Monitoring:** (`*/1 * * * *`) `/opt/vault_scripts/monitor_hashicorp_vault_service.sh` -> `/var/log/monitor_hashicorp_vault_service.log`
-*   **Vault Key Rotation:** (`0 2 1 * *`) `/opt/vault_scripts/rotate_rsa_key_pair_password_in_hashicorp_vault_service.sh` -> `/var/log/monitor_hashicorp_vault_service.log`
-*   **Log Rotation/Cleanup (`log_rotate_and_cleanup.sh`):** (`0 0 1 */3 *`) `/opt/scripts/log_rotate_and_cleanup.sh` -> Manages log files (`/var/log/monitor*.log`, `/var/log/watermark-service*/*.log`, etc.) using copy-truncate, compression, and 365-day retention in `/var/log/watermark_service_monitoring_log_backup/`. Logs to `/var/log/log_rotation.log`.
-*   **Log Permissions for Monitoring (`log_permission.sh`):** (`0 * * * *`) `/usr/local/bin/log_permission.sh` -> Ensures logs are readable by `promtail`.
-*   **Grafana Monitoring:** (`* * * * *`) `pgrep grafana || systemctl start grafana-server` -> Restarts Grafana if not running.
+Here's a breakdown of the key scheduled tasks:
+
+1.  **Watermark Service Monitoring (Production)**
+    *   **Schedule:** Every 3 minutes (`*/3 * * * *`)
+    *   **Command:** `/data/watermark_service/monitor_watermark_service.sh`
+    *   **Purpose:** Acts as a watchdog for the *production* Watermark Service instances (ports 8081, 8082), automatically detecting crashes or unresponsiveness.
+    *   **Mechanism:** Checks process status and likely performs basic health checks. Attempts automatic restart (potentially using `sudo ./start_watermark_service.sh`) if an instance is down.
+    *   **Relevance:** Critical for production availability. May mask underlying issues if frequent restarts occur. Temporarily disable during manual maintenance.
+    *   **Log File:** `/var/log/monitor_watermark_service.log` (Review for automatic restarts).
+
+2.  **HashiCorp Vault Monitoring**
+    *   **Schedule:** Every 1 minute (`*/1 * * * *`)
+    *   **Command:** `/opt/vault_scripts/monitor_hashicorp_vault_service.sh`
+    *   **Purpose:** Ensures the HashiCorp Vault service is operational, which is critical if the Watermark Service depends on it for secrets or configuration.
+    *   **Mechanism:** Checks Vault service status and likely attempts restart if down.
+    *   **Relevance:** Supports the reliability of services dependent on Vault.
+    *   **Log File:** `/var/log/monitor_hashicorp_vault_service.log`
+
+3.  **Vault Key Rotation**
+    *   **Schedule:** Monthly, on the 1st day at 2:00 AM (`0 2 1 * *`)
+    *   **Command:** `/opt/vault_scripts/rotate_rsa_key_pair_password_in_hashicorp_vault_service.sh`
+    *   **Purpose:** Performs scheduled rotation of RSA keys (used for JWT) within Vault as a security best practice.
+    *   **Mechanism:** Interacts with Vault API to update keys. Sends email failure alerts to `masudul.haque@valmet.com`.
+    *   **Relevance:** Impacts security tokens. The Watermark Service must be able to utilize the newly rotated keys fetched from Vault.
+    *   **Log File:** `/var/log/monitor_hashicorp_vault_service.log` (Shared with Vault monitor).
+
+4.  **Log Rotation/Cleanup (`log_rotate_and_cleanup.sh`)**
+    *   **Schedule:** Quarterly, on the 1st day of the month at Midnight (`0 0 1 */3 *`)
+    *   **Command:** `/opt/scripts/log_rotate_and_cleanup.sh`
+    *   **Purpose:** Manages disk space by rotating and archiving various monitoring and application log files, enforcing a long-term retention policy.
+    *   **Target Logs:** Explicitly processes files matching `/var/log/monitor_watermark_service.log`, `/var/log/monitor_hashicorp_vault_service.log`, `/var/log/start_watermark_service.log`, `/var/log/watermark-service-test/*.log`, and `/var/log/watermark-service/*.log`. Skips empty or non-existent files matching the patterns.
+    *   **Rotation Method:** Employs a safe "copy-and-truncate" strategy. It first copies the current log content (`cp -ap` preserving metadata) to a temporary file, and then truncates the original log file (`: > logfile`) back to zero size *without changing its inode*. This allows running applications to continue writing to the same open file descriptor seamlessly.
+    *   **Archiving:** Compresses (`gzip`) the copied content into an archive file. Archives are stored in dated subdirectories (e.g., `/var/log/watermark_service_monitoring_log_backup/YYYY-MM-DD/`).
+    *   **Archive Naming:** Compressed files are named using the pattern: `original_filename-YYYY-MM-DD-inode.gz` (e.g., `instance_8081_logger.log-2023-10-27-12345.gz`). Including the inode number helps identify the specific file instance that was rotated.
+    *   **Metadata & Safety:** Preserves original file ownership and permissions (`0640`) on the archives. Uses file locking (`flock` with a 5-minute timeout) during the copy/truncate phase to prevent race conditions if the script were ever triggered concurrently on the same file. Performs integrity checks (`gzip -t`) on archives after creation.
+    *   **Retention:** Automatically deletes entire daily backup directories (e.g., `/var/log/watermark_service_monitoring_log_backup/YYYY-MM-DD`) that are older than 365 days. It performs an integrity check on the `.gz` files within a directory before deleting it.
+    *   **Logging:** Records its own execution progress, successes, and errors to `/var/log/log_rotation.log`. It also maintains an audit trail of created and deleted backup directories in `/var/log/watermark_service_monitoring_log_backup/audit/trail.log`.
+    *   **Relevance:** Crucial for managing disk space and ensuring historical logs are archived safely for one year. Understanding the backup location and naming convention is essential for retrieving older logs.
+
+5.  **Log Permissions for Monitoring (`log_permission.sh`)**
+    *   **Schedule:** Hourly, at the top of the hour (`0 * * * *`)
+    *   **Command:** `/usr/local/bin/log_permission.sh`
+    *   **Purpose:** Ensures log files (likely including `/var/log/watermark-service*/`) are readable by the `promtail` agent for log aggregation in Grafana/Loki.
+    *   **Mechanism:** Sets appropriate file ownership and read permissions, necessary if the application logs are created by a different user (e.g., `root`) than the one `promtail` runs as.
+    *   **Relevance:** Essential for the observability stack; incorrect permissions prevent logs from appearing in Grafana.
+    *   **Log File:** No specific log file configured (output redirected to `/dev/null`).
+
+6.  **Grafana Monitoring**
+    *   **Schedule:** Every 1 minute (`* * * * *`)
+    *   **Command:** `pgrep grafana || systemctl start grafana-server`
+    *   **Purpose:** Simple watchdog to ensure the Grafana server process is running.
+    *   **Mechanism:** Checks if the `grafana` process exists; if not, attempts to start the `grafana-server` service using `systemctl`.
+    *   **Relevance:** Helps maintain the availability of the monitoring dashboard interface.
+    *   **Log File:** No specific log file; `systemctl` actions are logged in the system journal (`journalctl -u grafana-server`).
+
+Understanding these automated tasks provides context for the server's behavior, potential automatic recovery actions, security practices, and how logs and monitoring data are managed over time.
 
 ## Load Balancer (Nginx)
 
