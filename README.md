@@ -226,6 +226,9 @@ After restarting the service, verify it's running correctly on `v4465a.unx.vstag
 
     # --- Monitoring Script Logs ---
     tail -f /var/log/monitor_watermark_service.log
+
+    # --- Rotation Script Log ---
+    tail -f /var/log/log_rotation.log
     ```
 
 2.  **Check Process Status & JAR Version:**
@@ -261,6 +264,10 @@ Several automated tasks run on `v4465a.unx.vstage.co` via cron. Key tasks includ
 *   **HashiCorp Vault Monitoring:** (`*/1 * * * *`) `/opt/vault_scripts/monitor_hashicorp_vault_service.sh` -> `/var/log/monitor_hashicorp_vault_service.log`
 *   **Vault Key Rotation:** (`0 2 1 * *`) `/opt/vault_scripts/rotate_rsa_key_pair_password_in_hashicorp_vault_service.sh` -> `/var/log/monitor_hashicorp_vault_service.log`
 *   **Log Rotation/Cleanup:** (`0 0 1 */3 *`) `/opt/scripts/log_rotate_and_cleanup.sh`
+    *   **Purpose:** Custom script that handles rotation for key monitoring and application logs (`/var/log/monitor*.log`, `/var/log/watermark-service*/*.log`, `/var/log/start_watermark_service.log`).
+    *   **Method:** Uses copy-and-truncate (`cp -ap` then `: >`) while preserving inodes and metadata. Logs are compressed (`gzip`) into timestamped/inode-named files (e.g., `instance_8081_logger.log-YYYY-MM-DD-inode.gz`) within dated backup directories under `/var/log/watermark_service_monitoring_log_backup/`. Uses `flock` for safe concurrent execution.
+    *   **Retention:** Deletes backup directories older than 365 days after integrity checks (`gzip -t`).
+    *   **Logging:** Logs its actions to `/var/log/log_rotation.log` and an audit trail to `/var/log/watermark_service_monitoring_log_backup/audit/trail.log`.
 *   **Log Permissions for Monitoring:** (`0 * * * *`) `/usr/local/bin/log_permission.sh` (Ensures Promtail/Loki can read logs, important if service runs as root or specific user).
 *   **Grafana Monitoring:** (`* * * * *`) `pgrep grafana || systemctl start grafana-server`
 
