@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import Button from '../common/Button';
+import React, { useState } from "react";
+import Button from "../common/Button";
+import GoogleLogin from "./GoogleLogin";
 
-const LoginForm = ({ onSubmit, isLoading, errorMessage }) => {
+const LoginForm = ({ onSubmit, onGoogleSignIn, isLoading, errorMessage }) => {
   const [formData, setFormData] = useState({
-    username: '',
-    password: ''
+    username: "",
+    password: "",
   });
 
   const handleChange = (e) => {
@@ -47,8 +48,14 @@ const LoginForm = ({ onSubmit, isLoading, errorMessage }) => {
         />
       </div>
       <Button type="submit" disabled={isLoading}>
-        {isLoading ? 'Logging in...' : 'Login'}
+        {isLoading ? "Logging in..." : "Login"}
       </Button>
+      <div className="styled-divider">
+        <span>or</span>
+      </div>
+      <div className="google-login-container">
+        <GoogleLogin onGoogleSignIn={onGoogleSignIn} />
+      </div>
     </form>
   );
 };

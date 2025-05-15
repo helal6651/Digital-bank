@@ -1,0 +1,23 @@
+.create-account-button {
+  background: linear-gradient(90deg, #007bff, #0056b3); /* Gradient blue */
+  color: white;
+  border: none;
+  border-radius: 50px; /* Roundish button */
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+  width: auto; /* Prevent the button from stretching */
+}
+
+.create-account-button:hover {
+  background: linear-gradient(90deg, #0056b3, #003f7f); /* Darker gradient */
+  transform: scale(1.05); /* Slight zoom effect */
+}
+
+.create-account-button:active {
+  transform: scale(1); /* Reset zoom on click */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Reduced shadow */
+}

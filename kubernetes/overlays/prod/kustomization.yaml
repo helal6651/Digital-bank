@@ -4,7 +4,7 @@ resources:
   - ../../base/postgres
   - ../../base/api-gateway
   - ../../base/namespace
-  - ../../base/vault
+  # - ../../base/vault
   - ../../base/user-service
   - ../../base/notification-service
   - ../../base/front-end
@@ -16,7 +16,7 @@ configMapGenerator:
 
 images:
   - name: bjitpdmad/api-gateway-service
-    newTag: latest 
+    newTag: latest
   - name: obsidiandynamics/kafdrop
     newTag: latest
   - name: bitnami/kafka
