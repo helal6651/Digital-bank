@@ -31,7 +31,7 @@ public class User {
     @Column(unique = true, nullable = false, length = 50)
     private String username;
 
-    @Column(unique = true, nullable = false, length = 50)
+    @Column(name = "email", unique = true, nullable = false, length = 50)
     private String email;
 
     @Column(name = "password_hash", nullable = false, length = 255)
@@ -45,10 +45,10 @@ public class User {
     private Boolean mfaEnabled = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "varchar(255) default 'LOCAL'")
     private AuthProvider provider; // e.g., GOOGLE
 
-    @Column( name = "provider_id", unique = true)
+    @Column(name = "provider_id", unique = true)
     private String providerId; // Unique ID from the provider (Google's 'sub')
 
     @CreationTimestamp

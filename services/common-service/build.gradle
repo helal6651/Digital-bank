@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.4.4' apply false
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'maven-publish'
 }
 
 group = 'com.common'
@@ -28,7 +29,19 @@ repositories {
 	gradlePluginPortal()
 	maven { url "https://repo.spring.io/milestone" }
 }
-
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			groupId = 'com.common'
+			artifactId = 'common-service'
+			version = '0.0.1-SNAPSHOT'
+			from components.java
+		}
+	}
+	repositories {
+		mavenLocal()
+	}
+}
 
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -51,4 +64,8 @@ jar {
 
 springBoot {
 	mainClass = 'com.common_service.CommonServiceApplication'
+}
+
+tasks.withType(GenerateModuleMetadata) {
+	suppressedValidationErrors.add('dependencies-without-versions')
 }

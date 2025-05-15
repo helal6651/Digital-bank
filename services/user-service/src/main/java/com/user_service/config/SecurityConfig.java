@@ -6,12 +6,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.user_service.model.dto.SecretDto;
-import com.user_service.service.CustomOAuth2UserService;
-import com.user_service.service.OAuth2LoginSuccessHandler;
 import com.user_service.utils.ApplicationConstants;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,7 +23,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.core.convert.converter.Converter;
 
@@ -37,14 +32,11 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationFailureHandler;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.io.IOException;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.interfaces.RSAPublicKey;
@@ -73,16 +65,16 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private static final String[] AUTH_WHITELIST = {"/v1/api/user/register", "/v1/api/authenticate", "/actuator/health", "/login**", "/oauth2/**", "/api/user/me",  "/error", "/webjars/**"};
+    private static final String[] AUTH_WHITELIST = {"/v1/api/user/register", "/v1/api/authenticate", "/v1/api/renewToken", "/actuator/health",
+            "/login**", "/oauth2/**", "/api/user/me",  "/error", "/webjars/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/api/monitor/**",
+            "/swagger-resources", "/swagger-resources/**", "/apidocs/**"};
     private final Map<String, JwtEncoder> jwtEncoderCache = new ConcurrentHashMap<>();
     private final Map<String, JwtDecoder> jwtDecoderCache = new ConcurrentHashMap<>();
     private final UserSecretsManager userSecretsManager;
-    private final CustomOAuth2UserService customOAuth2UserService;
-   private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
-    public SecurityConfig(UserSecretsManager userSecretsManager, CustomOAuth2UserService customOAuth2UserService, OAuth2LoginSuccessHandler oauth2LoginSuccessHandler) {
+    // private final CustomOAuth2UserService customOAuth2UserService;
+ //  private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
+    public SecurityConfig(UserSecretsManager userSecretsManager) {
         this.userSecretsManager = userSecretsManager;
-        this.customOAuth2UserService = customOAuth2UserService;
-        this.oauth2LoginSuccessHandler = oauth2LoginSuccessHandler;
     }
 
 
@@ -101,13 +93,14 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         log.info("Configuring security filter chain");
         return httpSecurity
-                .cors(withDefaults()) // Enable CORS with default configuration (uses CorsConfigurationSource bean)
+                //.cors(withDefaults()) // Enable CORS with default configuration (uses CorsConfigurationSource bean)
+                .cors(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(AUTH_WHITELIST).permitAll()
                         .requestMatchers("v1/api/**").authenticated())
                 .csrf(AbstractHttpConfigurer::disable)
                 // OAuth2 Login Configuration
-                .oauth2Login(oauth2Login -> oauth2Login
+               /* .oauth2Login(oauth2Login -> oauth2Login
                         .userInfoEndpoint(userInfoEndpoint -> userInfoEndpoint
                                 .userService(customOAuth2UserService) // Use our custom service to process user info
                         )
@@ -115,7 +108,7 @@ public class SecurityConfig {
                         .failureHandler(authenticationFailureHandler()) // Custom failure handler
                         // Redirect to this endpoint after successful login (relative path)
                        // .defaultSuccessUrl("/api/user/me", true)
-                )
+                )*/
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())
@@ -248,7 +241,7 @@ public class SecurityConfig {
     }
 
     // Bean for custom authentication failure handling
-    @Bean
+/*    @Bean
     public AuthenticationFailureHandler authenticationFailureHandler() {
         return new SimpleUrlAuthenticationFailureHandler() {
             @Override
@@ -260,5 +253,5 @@ public class SecurityConfig {
                 getRedirectStrategy().sendRedirect(request, response, "/login?error=true");
             }
         };
-    }
+    }*/
 }

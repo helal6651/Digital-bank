@@ -4,6 +4,7 @@ package com.user_service.advice;
 import com.user_service.constants.ErrorCode;
 import com.user_service.constants.Messages;
 import com.user_service.exceptions.BankingApplicationException;
+import com.user_service.exceptions.InvalidJwtToken;
 import com.user_service.logging.ErrorMessageInfo;
 import com.user_service.logging.LogMessageConfig;
 import com.user_service.response.BaseResponse;
@@ -15,11 +16,14 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
@@ -132,17 +136,8 @@ public class RestExceptionHandler {
 
         return buildResponseEntity(Collections.singleton(message), errorCode, HttpStatus.BAD_REQUEST, ex, fieldErrors);
 
-      /*  // Extract field error messages for the response
-        Set<String> errorMessages = errors.values().stream().collect(Collectors.toSet());
-
-        BaseResponse response = BaseResponse.builder()
-                .responseType(ERROR)
-                .message(errorMessages)
-                .code(ErrorCode.INVALID_PASSWORD_PATTERN) // Assuming you have a VALIDATION_ERROR code
-                .build();
-
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);*/
     }
+
     @ExceptionHandler(MissingServletRequestPartException.class)
     public ResponseEntity<?> handleMissingParams(MissingServletRequestPartException ex) {
         String name = ex.getRequestPartName();
@@ -156,12 +151,41 @@ public class RestExceptionHandler {
         log.error("Access denied exception: {}", ex.getMessage());
         return buildResponseEntity(message, ErrorCode.ACCESS_DENIED, HttpStatus.FORBIDDEN, ex);
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handler(IllegalArgumentException ex) {
+        return buildResponseEntity(ex.getMessage(), ErrorCode.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, ex);
+    }
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        // Extract the root cause which contains the actual error message
+        Throwable rootCause = ex.getMostSpecificCause();
+        String errorMessage = rootCause.getMessage();
+
+        log.error("JSON parse error: {}", errorMessage);
+        return buildResponseEntity(errorMessage, ErrorCode.INVALID_ARGUMENT, HttpStatus.BAD_REQUEST, ex);
+    }
+
+    /**
+     * Handles custom {@link InvalidJwtToken} exceptions.
+     *
+     * @param e the exception to handle.
+     * @return a {@link BaseResponse} with the error details.
+     */
+    @ExceptionHandler ({InvalidJwtToken.class, JwtException.class})
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public BaseResponse handle (InvalidJwtToken e) {
+        logger (e.getLocalizedMessage (), e);
+        return BaseResponse.builder ().responseType (ERROR).message (Collections.singleton (e.getMessage ()))
+                .code (ErrorCode.INVALID_JWT_TOKEN).build ();
+    }
     private ResponseEntity<Object> buildResponseEntity(Collection<String> message, String errorCode,
                                                        HttpStatus status, Exception ex, Object error) {
         logger(message + " " + ex.getLocalizedMessage(), ex);
         return new ResponseEntity<>(BaseResponse.builder()
                 .responseType(ERROR).message(message).code(errorCode).error(error).build(), status);
     }
+
     private String getErrorCode(List<FieldError> fieldErrors) {
 
         String code = ErrorCode.INVALID_ARGUMENT;
