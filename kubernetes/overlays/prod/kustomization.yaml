@@ -8,11 +8,11 @@ resources:
   - ../../base/api-gateway
   - ../../base/account-service
   - ../../base/namespace
-  - ../../base/vault
+  # - ../../base/vault
   - ../../base/user-service
   - ../../base/notification-service
   - ../../base/front-end
-  - ../../base/redis    # Include Redis configuration
+  - ../../base/redis # Include Redis configuration
 
 configMapGenerator:
   - name: prod-config
