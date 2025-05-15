@@ -1,3 +1,4 @@
+/*
 package com.user_service.service;
 
 
@@ -116,4 +117,4 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
         return user;
     }
-}
+}*/

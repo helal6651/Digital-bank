@@ -47,8 +47,8 @@ public class JwtTokenService {
     /**
      * Constructor for initializing the JWT encoder and decoder.
      *
-     * @param jwtEncoder              the {@link JwtEncoder} responsible for encoding JWT tokens
-     * @param jwtDecoder              the {@link JwtDecoder} responsible for decoding and validating JWT tokens
+     * @param jwtEncoder         the {@link JwtEncoder} responsible for encoding JWT tokens
+     * @param jwtDecoder         the {@link JwtDecoder} responsible for decoding and validating JWT tokens
      * @param userSecretsManager the {@link UserSecretsManager} responsible for managing secrets
      */
     public JwtTokenService(JwtEncoder jwtEncoder, JwtDecoder jwtDecoder, UserSecretsManager userSecretsManager) {
@@ -57,34 +57,23 @@ public class JwtTokenService {
         this.userSecretsManager = userSecretsManager;
     }
 
-    /**
-     * Generates a JWT token for a given authentication object.
-     *
-     * @param authentication the {@link Authentication} object containing user details and authorities
-     * @param expireTime     the expiration time for the token in minutes
-     * @param tokenIssuer    the issuer of the token
-     * @param tokenType      the type of the token, either ACCESS or REFRESH
-     * @param rsaKeyVersion  the version of the RSA key used
-     * @param scope          the scope of the token
-     * @return the generated JWT token as a string
-     */
-    public String generateToken (Authentication authentication, int expireTime, String tokenIssuer, TokenType tokenType,
-                                 int rsaKeyVersion, String scope, Collection<String> authorities) {
-        log.info ("Token expire time in minutes: {}, token type: {}, scope {}", expireTime, tokenType, scope);
+    public String generateToken(String userName, int expireTime, String tokenIssuer, TokenType tokenType,
+                                int rsaKeyVersion, String scope, Collection<String> authorities) {
+        log.info("Token expire time in minutes: {}, token type: {}, scope {}", expireTime, tokenType, scope);
         // Generate JWT claims
-        Instant now = Instant.now ();
-        var claims = JwtClaimsSet.builder ()
-                .issuer (tokenIssuer)
-                .issuedAt (now)
-                .expiresAt (now.plus (expireTime, ChronoUnit.MINUTES))
-                .subject (authentication.getName ())
+        Instant now = Instant.now();
+        var claims = JwtClaimsSet.builder()
+                .issuer(tokenIssuer)
+                .issuedAt(now)
+                .expiresAt(now.plus(expireTime, ChronoUnit.MINUTES))
+                .subject(userName)
                 .claim("authorities", authorities) // Add authorities claim
-                .claim (ApplicationConstants.TOKEN_TYPE, tokenType).claim (ApplicationConstants.RSA_KEY_VERSION, rsaKeyVersion)
-                .claim ("scope", scope).build ();
+                .claim(ApplicationConstants.TOKEN_TYPE, tokenType).claim(ApplicationConstants.RSA_KEY_VERSION, rsaKeyVersion)
+                .claim("scope", scope).build();
 
         // Encode and return the JWT token
 
-        return this.jwtEncoder.encode (JwtEncoderParameters.from (claims)).getTokenValue ();
+        return this.jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
     /**
@@ -96,27 +85,27 @@ public class JwtTokenService {
      * @throws InvalidJwtToken if the token is invalid or missing
      * @throws IOException     if an I/O error occurs
      */
-    public Authentication validateRefreshToken (String refreshToken) throws JwtException, InvalidJwtToken, IOException {
+    public Authentication validateRefreshToken(String refreshToken) throws JwtException, InvalidJwtToken, IOException {
         try {
-            Optional<Integer> optionalVersion = Optional.ofNullable (userSecretsManager.getVaultKeyVersionFromToken (refreshToken));
-            optionalVersion.ifPresent (version -> {
-                log.info ("RSA key version in JWT Token Service: {}", version);
-                HttpServletRequest request = getCurrentRequest ();
+            Optional<Integer> optionalVersion = Optional.ofNullable(userSecretsManager.getVaultKeyVersionFromToken(refreshToken));
+            optionalVersion.ifPresent(version -> {
+                log.info("RSA key version in JWT Token Service: {}", version);
+                HttpServletRequest request = getCurrentRequest();
                 if (request != null) {
-                    setRequestAttributes (request, version);
+                    setRequestAttributes(request, version);
                 }
             });
 
             // Decode the JWT token
-            Jwt decodedJwt = jwtDecoder.decode (refreshToken);
-            validateTokenClaims (decodedJwt);
+            Jwt decodedJwt = jwtDecoder.decode(refreshToken);
+            validateTokenClaims(decodedJwt);
 
             // Return a JwtAuthenticationToken containing the decoded JWT
-            Authentication authentication = new JwtAuthenticationToken (decodedJwt);
-            log.info ("Validated refresh token successfully");
+            Authentication authentication = new JwtAuthenticationToken(decodedJwt);
+            log.info("Validated refresh token successfully");
             return authentication;
         } catch (JwtException e) {
-            handleJwtException (e);
+            handleJwtException(e);
             return null;
         }
     }
@@ -126,9 +115,9 @@ public class JwtTokenService {
      *
      * @return the current {@link HttpServletRequest}, or null if not available
      */
-    private HttpServletRequest getCurrentRequest () {
-        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes ();
-        return attributes != null ? attributes.getRequest () : null;
+    private HttpServletRequest getCurrentRequest() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        return attributes != null ? attributes.getRequest() : null;
     }
 
     /**
@@ -137,16 +126,16 @@ public class JwtTokenService {
      * @param request the current {@link HttpServletRequest}
      * @param version the RSA key version
      */
-    private void setRequestAttributes (HttpServletRequest request, Integer version) {
-        RSAPublicKey publicKey = userSecretsManager.fetchPublicKey (version);
+    private void setRequestAttributes(HttpServletRequest request, Integer version) {
+        RSAPublicKey publicKey = userSecretsManager.fetchPublicKey(version);
         if (publicKey != null) {
-            String requestId = UUID.randomUUID ().toString ();
-            log.info ("Setting request attributes with request ID: {} and RSA key version: {}", requestId, version);
-            request.setAttribute (ApplicationConstants.REQUEST_ID, requestId);
-            CustomJwtAuthenticationFilter.getMapRsaPublicKey ().put (version, publicKey);
-            CustomJwtAuthenticationFilter.getMapVersion ().put (requestId, version);
+            String requestId = UUID.randomUUID().toString();
+            log.info("Setting request attributes with request ID: {} and RSA key version: {}", requestId, version);
+            request.setAttribute(ApplicationConstants.REQUEST_ID, requestId);
+            CustomJwtAuthenticationFilter.getMapRsaPublicKey().put(version, publicKey);
+            CustomJwtAuthenticationFilter.getMapVersion().put(requestId, version);
         } else {
-            log.warn ("Public key not found for version: {}", version);
+            log.warn("Public key not found for version: {}", version);
         }
     }
 
@@ -156,17 +145,17 @@ public class JwtTokenService {
      * @param decodedJwt the decoded {@link Jwt} token
      * @throws InvalidJwtToken if the token is invalid or missing required claims
      */
-    private void validateTokenClaims (Jwt decodedJwt) throws InvalidJwtToken {
-        String tokenType = decodedJwt.getClaim (ApplicationConstants.TOKEN_TYPE);
-        log.info ("Validating token claims, token type: {}", tokenType);
-        Instant expiration = decodedJwt.getExpiresAt ();
+    private void validateTokenClaims(Jwt decodedJwt) throws InvalidJwtToken {
+        String tokenType = decodedJwt.getClaim(ApplicationConstants.TOKEN_TYPE);
+        log.info("Validating token claims, token type: {}", tokenType);
+        Instant expiration = decodedJwt.getExpiresAt();
 
-        if (!TokenType.REFRESH.name ().equals (tokenType) || expiration == null) {
-            log.error ("Invalid or missing token claims");
-            throw new InvalidJwtToken ("Invalid or missing token.");
+        if (!TokenType.REFRESH.name().equals(tokenType) || expiration == null) {
+            log.error("Invalid or missing token claims");
+            throw new InvalidJwtToken("Invalid or missing token.");
         }
 
-        log.info ("Token type: {}", tokenType);
+        log.info("Token type: {}", tokenType);
     }
 
     /**
@@ -175,14 +164,14 @@ public class JwtTokenService {
      * @param e the {@link JwtException} to handle
      * @throws JwtException if the token is expired or invalid
      */
-    private void handleJwtException (JwtException e) throws JwtException {
-        String errMsg = e.getMessage ();
-        if (errMsg.contains ("Jwt expired")) {
-            log.error ("Refresh token has expired: {}", errMsg);
-            throw new JwtException ("Refresh token has expired");
+    private void handleJwtException(JwtException e) throws JwtException {
+        String errMsg = e.getMessage();
+        if (errMsg.contains("Jwt expired")) {
+            log.error("Refresh token has expired: {}", errMsg);
+            throw new JwtException("Refresh token has expired");
         } else {
-            log.error ("Invalid refresh token: {}", errMsg);
-            throw new JwtException ("Invalid refresh token", e);
+            log.error("Invalid refresh token: {}", errMsg);
+            throw new JwtException("Invalid refresh token", e);
         }
     }
 }

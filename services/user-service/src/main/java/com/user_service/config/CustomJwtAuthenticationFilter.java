@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -22,6 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,7 +35,8 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
     private static Map<Integer, RSAPublicKey> mapRsaPublicKey = new ConcurrentHashMap<>();
     @Getter
     private static Map<String, Integer> mapVersion = new ConcurrentHashMap<>();
-
+    @Value("${gateway.secret.key}")
+    private String gatewaySecret;
     /**
      * The {@link JwtDecoder} used for decoding and validating JWT tokens.
      */
@@ -71,6 +74,16 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
         // Log before the request is processed
         log.info("Incoming request: {} {}", request.getMethod(), request.getRequestURI());
         logger.info("Incoming request: {} {}", request.getMethod(), request.getRequestURI());
+
+        String gatewaySignature = request.getHeader("X-Gateway-Signature");
+        System.out.println("Gateway Signature: " + gatewaySignature);
+        if (gatewaySignature == null || !validateGatewaySignature(gatewaySignature)) {
+            log.error("Unauthorized direct access attempt: {}", request.getRequestURI());
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Access denied: Service can only be accessed through API Gateway");
+            return;
+        }
+
         long startTime = System.currentTimeMillis();
         // Extract and validate the JWT token
         String token = userSecretsManager.extractTokenFromRequest(request);
@@ -123,7 +136,7 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
             log.error("Invalid or missing token type.");
             throw new InvalidJwtToken("Invalid or missing token.");
         }
-       String userName =  decodedJwt.getSubject();
+        String userName = decodedJwt.getSubject();
         log.info("User name from token: {}", userName);
         /*if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             log.info("Setting authentication for user: {}", userName);
@@ -158,5 +171,30 @@ public class CustomJwtAuthenticationFilter extends OncePerRequestFilter {
         response.setContentType("application/json");
         String errorMessage = e.getMessage().contains("Jwt expired") ? "Token has expired" : "Invalid or missing token.";
         response.getWriter().write("{\"error\": \"" + errorMessage + "\", \"code\":\"500\"}");
+    }
+
+    private boolean validateGatewaySignature(String signature) {
+        try {
+            String decoded = new String(Base64.getDecoder().decode(signature));
+            String[] parts = decoded.split(":");
+
+            if (parts.length != 2) {
+                return false;
+            }
+
+            long timestamp = Long.parseLong(parts[0]);
+            String secret = parts[1];
+
+            // Validate timestamp (e.g., within last 5 minutes)
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - timestamp > 300000) { // 5 minutes
+                return false;
+            }
+
+            return secret.equals(gatewaySecret);
+        } catch (Exception e) {
+            log.error("Error validating gateway signature", e);
+            return false;
+        }
     }
 }

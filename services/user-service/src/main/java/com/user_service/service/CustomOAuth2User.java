@@ -1,3 +1,4 @@
+/*
 package com.user_service.service;
 
 import com.common_service.model.entity.User;
@@ -54,4 +55,4 @@ public class CustomOAuth2User implements OAuth2User {
     public User getUser() {
         return user;
     }
-}
+}*/

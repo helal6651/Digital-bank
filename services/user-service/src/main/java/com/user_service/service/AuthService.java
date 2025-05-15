@@ -3,6 +3,7 @@ package com.user_service.service;
 
 
 import com.user_service.model.dto.LoginRequest;
+import com.user_service.model.dto.RefreshTokenRequest;
 import com.user_service.response.AuthenticationResponseDTO;
 
 import java.io.IOException;
@@ -19,6 +20,6 @@ import java.io.IOException;
 public interface AuthService {
     AuthenticationResponseDTO authenticate (LoginRequest request) throws Exception;
 
-   // AuthenticationResponseDTO renewToken (RefreshTokenRequest refreshTokenRequest) throws Exception;
+    AuthenticationResponseDTO renewToken (RefreshTokenRequest refreshTokenRequest) throws Exception;
 
 }
