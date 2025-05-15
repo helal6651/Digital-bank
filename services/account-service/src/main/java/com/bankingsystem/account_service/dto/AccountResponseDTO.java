@@ -1,6 +1,7 @@
 package com.bankingsystem.account_service.dto;
 
 import com.bankingsystem.account_service.model.Currency;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -19,6 +20,7 @@ public class AccountResponseDTO {
 
     private String accountNumber; // Unique account number
 
+    private String accountName;
     private String accountType; // Type of account (e.g., savings, checking)
 
     private BigDecimal balance; // Current balance of the account

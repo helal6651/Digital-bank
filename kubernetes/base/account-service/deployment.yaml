@@ -14,17 +14,24 @@ spec:
       labels:
         app: account-service
     spec:
+      initContainers:                      # Add an Init Container
+        - name: wait-for-redis
+          image: busybox                   # Use a lightweight image like BusyBox
+          command: [
+            "sh", "-c",
+            "until nc -z redis 6379; do echo waiting for redis; sleep 2; done;" # Wait for Redis to become available
+          ]
       containers:
         - name: account-service
-          image: bjitpdmad/account-service:latest
+          image: bjitpdmad/account-service:latest # Replace this with your actual image
           ports:
-            - containerPort: 9492
+            - containerPort: 9492               # The port your service listens on
           env:
-            - name: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_URL       # PostgreSQL database connection URL
               value: jdbc:postgresql://postgres:5432/user-service-db
-            - name: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_USERNAME  # Database username
               value: postgres
-            - name: SPRING_DATASOURCE_PASSWORD
+            - name: SPRING_DATASOURCE_PASSWORD  # Database password
               value: secure_password_2025
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: kafka:9092
@@ -38,15 +45,15 @@ spec:
               value: org.apache.kafka.common.serialization.StringSerializer
             - name: SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER
               value: org.apache.kafka.common.serialization.StringSerializer
-            - name: SPRING_APPLICATION_NAME
+            - name: SPRING_APPLICATION_NAME     # Application name
               value: account-service
-            - name: SERVER_PORT
+            - name: SERVER_PORT                 # Server port
               value: "9492"
             - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-              value: update
-            - name: SPRING_JPA_SHOW_SQL
+              value: create-drop                # Change per your requirement (e.g., update, validate)
+            - name: SPRING_JPA_SHOW_SQL         # Enable/disable SQL query logging
               value: "true"
-            - name: SPRING_CLOUD_CONFIG_ENABLED
+            - name: SPRING_CLOUD_CONFIG_ENABLED # Disable Spring Cloud Config if not in use
               value: "false"
             - name: SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT
               value: org.hibernate.dialect.PostgreSQLDialect
@@ -54,3 +61,9 @@ spec:
               value: kdsfdsfdsf
             - name: SECRET_ID
               value: kdsfdsfdsf
+            - name: SPRING_REDIS_HOST           # Updated Redis host
+              value: redis                      # Ensure this matches the Redis service name
+            - name: SPRING_REDIS_PORT           # Redis port
+              value: "6379"                     # Default Redis port
+            - name: SPRING_REDIS_PASSWORD       # Redis password
+              value: abc35                      # Match this with the Redis configuration

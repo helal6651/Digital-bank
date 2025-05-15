@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:latest # Use the official Redis image
+          ports:
+            - containerPort: 6379 # Default Redis port
+          command: ["redis-server", "--requirepass", "abc35"] # Set a password for Redis
+          volumeMounts:
+            - mountPath: /data # Path inside the container where Redis stores its data
+              name: redis-data
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-pvc

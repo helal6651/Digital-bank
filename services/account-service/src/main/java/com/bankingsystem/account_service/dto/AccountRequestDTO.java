@@ -1,6 +1,7 @@
 package com.bankingsystem.account_service.dto;
 
 import com.bankingsystem.account_service.model.Currency;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -16,9 +17,10 @@ public class AccountRequestDTO {
     @NotNull(message = "User ID is required")
     private Long userId; // The user to whom the account will be associated
 
-    @NotBlank(message = "Account number is required")
-    @Size(max = 20, message = "Account number must not exceed 20 characters")
+
     private String accountNumber; // Unique account number
+    @NotBlank(message = "Account name is required")
+    private String accountName;
 
     @NotBlank(message = "Account type is required")
     @Pattern(regexp = "^(savings|checking)$", message = "Account type must be either 'savings' or 'checking'")

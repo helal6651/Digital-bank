@@ -4,6 +4,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.regex.Pattern;
 
 public class ApplicationConstants {
 
@@ -16,6 +17,8 @@ public class ApplicationConstants {
 	public static final String VALID_PHONE_REGEX = "\\d{8,20}";
 	//public static final String VALID_PASSWORD_REGEX = "(?=^.{8,}$)(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?!.*\\s)[0-9a-zA-Z!@#$%^&*()]*$";
 	public static final String VALID_PASSWORD_REGEX = "^(?=.*\\d)(?=.*[a-z])(?=.*[A-Z])(?!.*\\s)[0-9a-zA-Z!@#$%^&*()]{8,}$";
+	public static final Pattern emailPattern = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+
 	public static final String DATA = "data";
 	public static final String TOKEN_TYPE = "token_type";
 	public static final String REQUEST_ID = "requestId";

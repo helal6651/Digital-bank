@@ -3,12 +3,10 @@ package com.bankingsystem.account_service.entity;
 import com.bankingsystem.account_service.model.Currency;
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "Accounts")
@@ -28,9 +26,11 @@ public class Account {
             foreignKey = @ForeignKey(name = "fk_user_account"))
     private User user;
 
-    @Column(name = "account_number", nullable = false, unique = true, length = 20)
-    private String accountNumber;
+    @Column(name = "account_number", nullable = false, unique = true, length = 20, updatable = false)
+    private String accountNumber; // Auto-generated
 
+    @Column(name = "account_name", nullable = false, length = 30)
+    private String accountName;
     @Column(name = "account_type", nullable = false, length = 20)
     private String accountType;
 
@@ -54,14 +54,35 @@ public class Account {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    /**
+     * Automatically sets the timestamps when an entity is created.
+     */
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+
+        // Generate unique account number if not already set
+        if (this.accountNumber == null || this.accountNumber.isEmpty()) {
+            this.accountNumber = generateUniqueAccountNumber();
+        }
     }
 
+    /**
+     * Automatically updates the timestamp when an entity is updated.
+     */
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Generates a unique account number (e.g., 20-character alphanumeric).
+     *
+     * @return A randomly generated unique account number.
+     */
+    private String generateUniqueAccountNumber() {
+        // Use UUID, remove dashes, and limit to 20 characters
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 20).toUpperCase();
     }
 }
