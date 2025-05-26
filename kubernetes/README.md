@@ -102,7 +102,8 @@ kind create cluster --config=overlays/prod/kind-config.yaml
 # To create an ingress controller
 
    ```
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+
    ```
 # To create Kubernetes  objects (wait few seconds)
 
