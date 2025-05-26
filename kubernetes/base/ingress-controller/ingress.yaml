@@ -18,7 +18,7 @@ spec:
                 name: digital-banking-frontend
                 port:
                   number: 80
-          - path: /v1/api/users(/|$)(.*)
+          - path: /v1/api/user(/|$)(.*)
             pathType: Prefix
             backend:
               service:
