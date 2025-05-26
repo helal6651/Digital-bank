@@ -5,9 +5,8 @@ metadata:
   labels:
     app: digital-banking-frontend
 spec:
-  type: LoadBalancer
   ports:
-    - port: 2070
-      targetPort: 80
+    - port: 80
+      targetPort: 80  # This should match your container port (80)
   selector:
     app: digital-banking-frontend
