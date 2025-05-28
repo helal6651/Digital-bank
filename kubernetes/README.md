@@ -89,3 +89,32 @@ kubectl get svc -n digital-bank
 kubectl delete all --all -n digital-bank
 
    ```
+
+## Deployment using "Kind"
+
+# To see all the services from the namespace "digital-bank"
+
+   ```
+kind create cluster --config=overlays/prod/kind-config.yaml
+
+   ```
+
+# To create an ingress controller
+
+   ```
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+
+   ```
+# To create Kubernetes  objects (wait few seconds)
+
+   ```
+kubectl apply -k overlays/prod
+
+   ```
+
+# To delete the cluster
+
+   ```
+kind delete cluster
+
+   ```

@@ -24,6 +24,8 @@ images:
     newTag: latest
   - name: bjitpdmad/account-service
     newTag: latest
+  - name: bjitpdmad/account-service
+    newTag: latest
   - name: obsidiandynamics/kafdrop
     newTag: latest
   - name: bitnami/kafka
