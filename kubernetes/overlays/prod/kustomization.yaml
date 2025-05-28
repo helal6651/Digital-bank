@@ -13,6 +13,7 @@ resources:
   - ../../base/notification-service
   - ../../base/front-end
   - ../../base/redis # Include Redis configuration
+  - ../../base/ingress-controller   
 
 configMapGenerator:
   - name: prod-config
