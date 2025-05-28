@@ -21,7 +21,9 @@ configMapGenerator:
       - config.yaml
 
 images:
-  - name: bjitpdmad/api-gateway-service
+  - name: bjitpdmad/api-gateway
+    newTag: latest
+  - name: bjitpdmad/account-service
     newTag: latest
   - name: bjitpdmad/account-service
     newTag: latest
