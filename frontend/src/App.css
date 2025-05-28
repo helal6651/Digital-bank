@@ -30,11 +30,11 @@ p {
 
 /* Improve the design of the Register button */
 button {
-  width: 100%; /* Ensure the button takes full width of the form */
+  width: 100%; 
   padding: 0.75rem;
   font-size: 1rem;
   font-weight: bold;
-  background-color: #007bff; /* Primary blue color */
+  background-color: #007bff; 
   color: white;
   border: none;
   border-radius: 4px;

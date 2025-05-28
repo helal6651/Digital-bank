@@ -35,6 +35,10 @@
     "level": "ERROR",
     "message": "User role not found."
   },
+  "4024": {
+    "level": "ERROR",
+    "message": "Invalid Arguments"
+  },
   "4025": {
     "level": "ERROR",
     "message": "Unauthorized operation"
@@ -42,6 +46,22 @@
   "4026": {
     "level": "ERROR",
     "message": "Invalid date format."
+  },
+  "4028": {
+    "level": "ERROR",
+    "message": "User not found."
+  },
+  "4029": {
+    "level": "ERROR",
+    "message": "Invalid login credentials. Please check your username and password."
+  },
+  "4030": {
+    "level": "ERROR",
+    "message": "Username must be between 3-50 characters."
+  },
+  "4031": {
+    "level": "ERROR",
+    "message": "Invalid email address"
   },
   "5000": {
     "level": "ERROR",

@@ -1,14 +1,15 @@
 package com.user_service.utils;
 
 
-import com.user_service.model.entity.User;
-import com.user_service.repository.UserRepository;
+import com.common_service.model.entity.User;
+import com.common_service.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.regex.Matcher;
 
 @Slf4j
 @Component
@@ -32,8 +33,15 @@ public class AuthenticationUtils {
             return Optional.empty();
         }
         log.info("Authentication user: {}", authentication.getName());
-
-        return userRepository.findByUsername(authentication.getName());
+        Matcher matcher = ApplicationConstants.emailPattern.matcher(authentication.getName());
+        Optional<User> user;
+        if (matcher.matches()) {
+            log.info("User is email");
+            user = userRepository.findByEmail(authentication.getName());
+        } else {
+            user = userRepository.findByUsername(authentication.getName());
+        }
+        return user;
     }
 
     /**

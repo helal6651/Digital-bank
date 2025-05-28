@@ -6,6 +6,7 @@ const LoginForm = ({ onSubmit, onGoogleSignIn, isLoading, errorMessage }) => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
+    type: "1",
   });
 
   const handleChange = (e) => {

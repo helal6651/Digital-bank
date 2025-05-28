@@ -1,9 +1,10 @@
 package com.user_service.model.dto;
 
-import jakarta.validation.constraints.NotEmpty;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import com.user_service.constants.ErrorCode;
+import com.user_service.enums.AuthenticationType;
+import lombok.*;
+
+import javax.validation.constraints.NotNull;
 
 /**
  * DTO for user authentication requests.
@@ -11,15 +12,21 @@ import lombok.Setter;
 @Builder
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class LoginRequest {
     /**
      * The username of the user attempting to authenticate.
      */
-    @NotEmpty (message = "Username must not be empty")
     private String username;
     /**
      * The password of the user attempting to authenticate.
      */
-    @NotEmpty (message = "Password must not be empty")
     private String password;
+
+    @NotNull(message = ErrorCode.INVALID_ARGUMENT)
+    private AuthenticationType type;
+
+    private String snsAccessToken;
+
 }

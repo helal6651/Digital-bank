@@ -65,11 +65,14 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private static final String[] AUTH_WHITELIST = {"/v1/api/user/register", "/v1/api/authenticate", "/actuator/health"};
+    private static final String[] AUTH_WHITELIST = {"/v1/api/user/register", "/v1/api/authenticate", "/v1/api/renewToken", "/actuator/health",
+            "/login**", "/oauth2/**", "/api/user/me",  "/error", "/webjars/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/api/monitor/**",
+            "/swagger-resources", "/swagger-resources/**", "/apidocs/**"};
     private final Map<String, JwtEncoder> jwtEncoderCache = new ConcurrentHashMap<>();
     private final Map<String, JwtDecoder> jwtDecoderCache = new ConcurrentHashMap<>();
     private final UserSecretsManager userSecretsManager;
-
+    // private final CustomOAuth2UserService customOAuth2UserService;
+ //  private final OAuth2LoginSuccessHandler oauth2LoginSuccessHandler;
     public SecurityConfig(UserSecretsManager userSecretsManager) {
         this.userSecretsManager = userSecretsManager;
     }
@@ -90,17 +93,28 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         log.info("Configuring security filter chain");
         return httpSecurity
-                .cors(withDefaults()) // Enable CORS with default configuration (uses CorsConfigurationSource bean)
+                //.cors(withDefaults()) // Enable CORS with default configuration (uses CorsConfigurationSource bean)
+                .cors(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(AUTH_WHITELIST).permitAll()
                         .requestMatchers("v1/api/**").authenticated())
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // OAuth2 Login Configuration
+               /* .oauth2Login(oauth2Login -> oauth2Login
+                        .userInfoEndpoint(userInfoEndpoint -> userInfoEndpoint
+                                .userService(customOAuth2UserService) // Use our custom service to process user info
+                        )
+                        .successHandler(oauth2LoginSuccessHandler)
+                        .failureHandler(authenticationFailureHandler()) // Custom failure handler
+                        // Redirect to this endpoint after successful login (relative path)
+                       // .defaultSuccessUrl("/api/user/me", true)
+                )*/
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())
                         )
                         .authenticationEntryPoint(entryPoint()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .httpBasic(withDefaults()).headers(header -> header.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .addFilterBefore(customJwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .build();
@@ -225,4 +239,19 @@ public class SecurityConfig {
         }
         return NimbusJwtDecoder.withPublicKey(readPublicKey(userSecretsManager.getSecretDto())).build();
     }
+
+    // Bean for custom authentication failure handling
+/*    @Bean
+    public AuthenticationFailureHandler authenticationFailureHandler() {
+        return new SimpleUrlAuthenticationFailureHandler() {
+            @Override
+            public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
+                                                AuthenticationException exception) throws IOException, ServletException {
+                log.error("OAuth2 Authentication Failed: {}", exception.getMessage(), exception);
+                // Redirect to a generic login error page
+                // You could add specific error codes or messages based on the exception type
+                getRedirectStrategy().sendRedirect(request, response, "/login?error=true");
+            }
+        };
+    }*/
 }

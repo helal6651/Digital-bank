@@ -1,9 +1,9 @@
 package com.user_service.service.impl;
 
+import com.common_service.model.entity.UserProfile;
+import com.common_service.repository.UserProfileRepository;
 import com.user_service.enums.ResultCodeConstants;
 import com.user_service.model.dto.UserProfileRequest;
-import com.user_service.model.entity.UserProfile;
-import com.user_service.repository.UserProfileRepository;
 import com.user_service.response.user.UserProfileResponse;
 import com.user_service.service.UserProfileService;
 import com.user_service.utils.AuthenticationUtils;
@@ -16,6 +16,7 @@ import java.util.Date;
 import java.util.Optional;
 
 import static com.user_service.response.BankingResponseUtil.throwApplicationException;
+
 
 @Service
 public class UserProfileServiceImpl implements UserProfileService {
