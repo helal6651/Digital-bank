@@ -1,14 +1,14 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:9491/v1/api/user/';
-//const API_URL = 'http://127.0.0.1:51220/v1/api/user/';
-//const API_URL = 'http://user-service:9491/v1/api/user/';
-const API_URL_LOGIN = "http://localhost:9491/v1/api/";
+//const API_URL = 'http://localhost:9491/v1/api/user/';
+//const API_URL_LOGIN = "http://localhost:9491/v1/api/";
+const API_URL = 'http://digital-bank.example.com/v1/api/user/';
+const API_URL_LOGIN = 'http://digital-bank.example.com/v1/api/';
 
 export const register = async (userData) => {
   console.log("register() function from authService.js : ");
   const response = await axios.post(`${API_URL}register`, userData);
-  
+
   const { result, code, message } = response.data;
   console.log(`Email: ${result?.email}`);
   console.log(`Response Code: ${code}`);
