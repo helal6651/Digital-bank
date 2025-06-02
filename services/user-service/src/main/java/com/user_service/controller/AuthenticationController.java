@@ -3,6 +3,7 @@ package com.user_service.controller;
 
 import com.user_service.enums.ResponseType;
 import com.user_service.model.dto.LoginRequest;
+import com.user_service.model.dto.RefreshTokenRequest;
 import com.user_service.response.BaseResponse;
 import com.user_service.service.AuthService;
 import com.user_service.utils.ApplicationConstants;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
 import java.util.Collections;
 
 /**
@@ -54,4 +54,13 @@ public class AuthenticationController {
                 .build();
     }
 
+    @PostMapping ("/renewToken")
+    public BaseResponse renewToken (@RequestBody RefreshTokenRequest refreshTokenRequest) throws Exception {
+        return BaseResponse.builder ()
+                .responseType (ResponseType.RESULT)
+                .message (Collections.singleton (HttpStatus.OK.getReasonPhrase ()))
+                .result (authService.renewToken (refreshTokenRequest))
+                .code (ApplicationConstants.SUCCESS_CODE)
+                .build ();
+    }
 }

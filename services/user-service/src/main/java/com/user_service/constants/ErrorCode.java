@@ -15,6 +15,7 @@ package com.user_service.constants;
 public final class ErrorCode {
     public static final String ALREADY_EXIST = "40101";
     public static final String JWT_TOKEN_EXPIRED = "40103";
+    public static final String INVALID_JWT_TOKEN = "40104";
     public static final String INVALID_PASSWORD_PATTERN = "4006";
     public static final String ROLE_NOT_FOUND = "4007";
     public static final String INVALID_ARGUMENT = "4024";

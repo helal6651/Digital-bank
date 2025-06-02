@@ -1,5 +1,8 @@
+
 import React, { useState, useEffect } from "react";
 import { Navbar, Footer } from "../components/layout";
+import CreateAccountSection from "../components/dashboard/CreateAccountSection";
+import { useAuth } from "../context/AuthContext";
 import "./css/Dashboard.css";
 import axios from "axios";
 
@@ -14,6 +17,13 @@ const userList = [
 ];
 
 const Dashboard = () => {
+  const { isLoggedIn } = useAuth();
+
+  const handleCreateAccount = () => {
+    console.log("Create Account button clicked");
+    console.log("isLoggedIn button: ", isLoggedIn);
+  };
+
   const [showForm, setShowForm] = useState(false); // Toggle for showing/hiding the modal
   const [formData, setFormData] = useState({
     accountName: "",
@@ -93,6 +103,8 @@ const Dashboard = () => {
     setLoading(false);
     setShowForm(false);
     setSelectedUser(null);
+
+
   };
 
   return (
@@ -100,8 +112,9 @@ const Dashboard = () => {
       <Navbar />
       <div className="container">
         <div className="dashboard">
-          <h1>Dashboard</h1>
+           <CreateAccountSection onCreateAccount={handleCreateAccount} />
 
+          <h1>Dashboard</h1>
           {/* Feedback Message */}
           {message && <p className="feedback-message">{message}</p>}
 
@@ -347,6 +360,7 @@ const Dashboard = () => {
               />
             </div>
           )}
+
         </div>
       </div>
       <Footer />

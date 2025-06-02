@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const Navbar = () => {
   const { isLoggedIn, logout } = useAuth();
@@ -8,13 +8,19 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
       <div className="container">
-        <Link to="/" className="navbar-brand" style={{fontWeight: 'bolder'}}>Digital Banking</Link>
+        <Link
+          to={isLoggedIn ? "/dashboard" : "/"}
+          className="navbar-brand"
+          style={{ fontWeight: "bolder" }}
+        >
+          Digital Banking
+        </Link>
         <button
           className="navbar-toggler"
           type="button"
@@ -31,10 +37,15 @@ const Navbar = () => {
             {isLoggedIn ? (
               <>
                 <li className="nav-item">
-                  <Link to="/dashboard" className="nav-link">Dashboard</Link>
+                  <Link to="/dashboard" className="nav-link">
+                    Dashboard
+                  </Link>
                 </li>
                 <li className="nav-item">
-                  <button onClick={handleLogout} className="btn btn-outline-light ms-2">
+                  <button
+                    onClick={handleLogout}
+                    className="btn btn-outline-light ms-2"
+                  >
                     Logout
                   </button>
                 </li>
@@ -42,10 +53,14 @@ const Navbar = () => {
             ) : (
               <>
                 <li className="nav-item">
-                  <Link to="/login" className="nav-link">Login</Link>
+                  <Link to="/login" className="nav-link">
+                    Login
+                  </Link>
                 </li>
                 <li className="nav-item">
-                  <Link to="/register" className="btn btn-light ms-2">Register</Link>
+                  <Link to="/register" className="btn btn-light ms-2">
+                    Register
+                  </Link>
                 </li>
               </>
             )}

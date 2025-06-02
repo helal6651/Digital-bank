@@ -8,11 +8,12 @@ resources:
   - ../../base/api-gateway
   - ../../base/account-service
   - ../../base/namespace
-  - ../../base/vault
+  # - ../../base/vault
   - ../../base/user-service
   - ../../base/notification-service
   - ../../base/front-end
-  - ../../base/redis    # Include Redis configuration
+  - ../../base/redis # Include Redis configuration
+  - ../../base/ingress-controller   
 
 configMapGenerator:
   - name: prod-config
@@ -20,7 +21,9 @@ configMapGenerator:
       - config.yaml
 
 images:
-  - name: bjitpdmad/api-gateway-service
+  - name: bjitpdmad/api-gateway
+    newTag: latest
+  - name: bjitpdmad/account-service
     newTag: latest
   - name: bjitpdmad/account-service
     newTag: latest

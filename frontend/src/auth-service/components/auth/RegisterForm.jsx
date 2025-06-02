@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
-import { register } from '../../services/authService';
-import Input from '../common/Input';
-import Button from '../common/Button';
+import React, { useState } from "react";
+import { register } from "../../services/authService";
+import Input from "../common/Input";
+import Button from "../common/Button";
+import googleLogo from "../../assets/images/google-logo.png";
 
 const RegisterForm = ({ onRegisterSuccess }) => {
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -20,10 +21,9 @@ const RegisterForm = ({ onRegisterSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
+    setError("");
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
@@ -31,18 +31,28 @@ const RegisterForm = ({ onRegisterSuccess }) => {
       setIsLoading(true);
       const { username, email, password } = formData;
       const response = await register({ username, email, password });
-      
+
       if (response.code !== "201") {
-        throw new Error(response.message?.[0] || "Registration failed with code: " + response.code);
+        throw new Error(
+          response.message?.[0] ||
+            "Registration failed with code: " + response.code
+        );
       }
       console.log(response.message?.[0] ?? "No message");
       onRegisterSuccess();
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(
+        err.response?.data?.message || "Registration failed. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
+
+  // const handleGoogleRegister = () => {
+  //   console.log("Google register clicked");
+  //   // Add Google OAuth logic here
+  // };
 
   return (
     <form onSubmit={handleSubmit} className="register-form">
@@ -80,8 +90,21 @@ const RegisterForm = ({ onRegisterSuccess }) => {
         required
       />
       <Button type="submit" disabled={isLoading}>
-        {isLoading ? 'Registering...' : 'Sign Up'}
+        {isLoading ? "Registering..." : "Sign Up"}
       </Button>
+      {/* <div className="styled-divider">
+        <span>or</span>
+      </div>
+      <div className="google-login-container">
+        <button
+          type="button"
+          className="google-login-button"
+          onClick={handleGoogleRegister}
+        >
+          <img src={googleLogo} alt="Google logo" className="google-logo" />
+          Continue with Google
+        </button>
+      </div> */}
     </form>
   );
 };

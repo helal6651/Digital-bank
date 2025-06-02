@@ -1,3 +1,4 @@
+/*
 package com.user_service.service;
 
 import com.common_service.repository.UserRepository;
@@ -99,4 +100,4 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
                 .refreshToken(refreshToken)
                 .build();
     }
-}
+}*/

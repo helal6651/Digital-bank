@@ -77,7 +77,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private void createUsersIfNotExist() {
         if (userRepository.findByUsername("digital_bank").isEmpty()) {
-            String hashedPassword = passwordEncoder.encode("digital_bank");
+            String hashedPassword = passwordEncoder.encode("Az12345678");
 
             Role adminRole = roleRepository.findByName(UserRole.ADMIN.name())
                     .orElseThrow(() -> new RuntimeException("Admin role not found"));

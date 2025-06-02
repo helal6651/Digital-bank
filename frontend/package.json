@@ -1,5 +1,6 @@
 {
   "name": "m-banking",
+  "homepage": "http://digital-bank.example.com",
   "private": true,
   "version": "0.0.0",
   "type": "module",
