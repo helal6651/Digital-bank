@@ -92,6 +92,7 @@ public class DataSeeder implements CommandLineRunner {
                     .build();
             user.getRoles().add(adminRole);
             userRepository.save(user);
+            System.out.println("User created: " + user.getUsername());
         }
     }
 }

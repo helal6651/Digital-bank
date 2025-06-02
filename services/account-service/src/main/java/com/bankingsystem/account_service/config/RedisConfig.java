@@ -1,4 +1,4 @@
-package com.bankingsystem.account_service.confiq;
+package com.bankingsystem.account_service.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;

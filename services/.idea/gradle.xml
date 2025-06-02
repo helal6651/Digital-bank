@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
@@ -9,6 +10,11 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/account-service" />
+            <option value="$PROJECT_DIR$/check-payment-due-service" />
+            <option value="$PROJECT_DIR$/common-service" />
+            <option value="$PROJECT_DIR$/notification-service" />
+            <option value="$PROJECT_DIR$/user-service" />
           </set>
         </option>
       </GradleProjectSettings>

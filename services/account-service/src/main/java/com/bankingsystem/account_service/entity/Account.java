@@ -3,9 +3,9 @@ package com.bankingsystem.account_service.entity;
 import com.bankingsystem.account_service.model.Currency;
 import jakarta.persistence.*;
 import lombok.*;
-
+import com.common_service.model.entity.User;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -46,21 +46,21 @@ public class Account {
     private String status = "active";
 
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private OffsetDateTime updatedAt;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 
     /**
      * Automatically sets the timestamps when an entity is created.
      */
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+        this.createdAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
 
         // Generate unique account number if not already set
         if (this.accountNumber == null || this.accountNumber.isEmpty()) {
@@ -73,7 +73,7 @@ public class Account {
      */
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
     }
 
     /**

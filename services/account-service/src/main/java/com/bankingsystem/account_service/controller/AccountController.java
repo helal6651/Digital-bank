@@ -113,7 +113,6 @@ public class AccountController {
 
     private AccountResponseDTO getAccountFromCacheOrDb(String accountNumber) throws Exception {
         AccountResponseDTO accountResponseDTO = null;
-
         try {
             Object rawData = this.redisTemplate.opsForValue().get(accountNumber);
             logger.info("Raw data from Redis: {}", rawData);

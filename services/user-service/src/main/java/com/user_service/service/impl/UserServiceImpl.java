@@ -74,12 +74,12 @@ public class UserServiceImpl implements UserService {
         User savedUser = userRepository.save(user);
 
         // Send notification email
-        kafkaProducerService.sendAccountActivationNotification(
-                savedUser.getUserId(),
-                savedUser.getEmail(),
-                savedUser.getUsername(),
-                "digital-bank-active-user-en"
-        );
+//        kafkaProducerService.sendAccountActivationNotification(
+//                savedUser.getUserId(),
+//                savedUser.getEmail(),
+//                savedUser.getUsername(),
+//                "digital-bank-active-user-en"
+//        );
         return userConverter.convert(savedUser);
     }
 

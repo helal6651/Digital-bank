@@ -1,0 +1,26 @@
+scalar DateTime
+type Query {
+    getAccountsByUserId(id: ID!): BaseResponse
+}
+
+type BaseResponse {
+    type: String
+    message: [String]
+    result: [AccountResponseDTO]
+    error: String
+    code: String
+}
+
+type AccountResponseDTO {
+    accountId: ID
+    userId: Int
+    accountNumber: String
+    accountName: String
+    accountType: String
+    balance: Float
+    currency: String
+    status: String
+    createdAt: DateTime
+    updatedAt: DateTime
+    deletedAt: DateTime
+}
