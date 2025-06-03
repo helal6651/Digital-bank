@@ -19,13 +19,38 @@ export const register = async (userData) => {
 
 export const login = async (userData) => {
   try {
-    const response = await axios.post(`${API_URL_LOGIN}authenticate`, userData);
-    
-    // If login is successful, store tokens
-    if (response.data.code === "200") {
-      storeTokens(response.data.result);
-    }
-    
+//    const response = await axios.post(`${API_URL_LOGIN}authenticate`, userData);
+//
+//    // If login is successful, store tokens
+//    if (response.data.code === "200") {
+//      storeTokens(response.data.result);
+//    }
+
+       // Mocked response data
+        const mockedResponse = {
+          code: "200",
+          message: "Login successful",
+          result: {
+            accessToken: "mockAccessToken12345",
+            refreshToken: "mockRefreshToken67890",
+            user: {
+              id: "1",
+              username: userData.username,
+              email: "dummyemail@example.com",
+            },
+          },
+        };
+
+        // Simulate network delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // If login is successful, store tokens
+        if (mockedResponse.code === "200") {
+          storeTokens(mockedResponse.result);
+        }
+
+        return mockedResponse;
+
     return response.data;
   } catch (error) {
     console.error('Login error:', error);
@@ -49,7 +74,8 @@ export const getAccessToken = () => {
 
 // Check if user is authenticated
 export const isAuthenticated = () => {
-  return !!getAccessToken();
+ // return !!getAccessToken();
+ return true;
 };
 
 // Logout user

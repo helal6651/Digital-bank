@@ -70,6 +70,36 @@ public class AccountController {
         }
     }
 
+    /**
+     * New Endpoint: Fetch all accounts by user ID.
+     */
+    @GetMapping({"/user/{userId}"})
+    @ResponseStatus(HttpStatus.OK)
+    public BaseResponse getAccountsByUserId(@PathVariable Long userId) {
+        logger.info("Fetching accounts for user ID: {}", userId);
+
+        try {
+            // Call service method to fetch accounts by user ID
+            var accounts = this.accountService.getAccountsByUserId(userId);
+
+            return BaseResponse.builder()
+                    .responseType(ResponseType.RESULT)
+                    .message(Collections.singleton(HttpStatus.OK.getReasonPhrase()))
+                    .result(accounts)
+                    .code("200")
+                    .build();
+        } catch (Exception ex) {
+            logger.error("Error while fetching accounts for user ID: {}", ex.getMessage(), ex);
+            return BaseResponse.builder()
+                    .responseType(ResponseType.ERROR)
+                    .message(Collections.singleton("Failed to fetch accounts"))
+                    .result(Collections.emptyList())
+                    .code("404")
+                    .build();
+        }
+    }
+
+
     private void saveAccountInRedis(AccountResponseDTO accountResponseDTO) {
         try {
             String accountNumber = accountResponseDTO.getAccountNumber();
@@ -83,7 +113,6 @@ public class AccountController {
 
     private AccountResponseDTO getAccountFromCacheOrDb(String accountNumber) throws Exception {
         AccountResponseDTO accountResponseDTO = null;
-
         try {
             Object rawData = this.redisTemplate.opsForValue().get(accountNumber);
             logger.info("Raw data from Redis: {}", rawData);

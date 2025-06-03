@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -29,9 +29,9 @@ public class AccountResponseDTO {
 
     private String status; // Status of the account (e.g., active, inactive, closed)
 
-    private LocalDateTime createdAt; // Timestamp when the account was created
+    private OffsetDateTime createdAt; // Timestamp when the account was created
 
-    private LocalDateTime updatedAt; // Timestamp when the account was last updated
+    private OffsetDateTime updatedAt; // Timestamp when the account was last updated
 
-    private LocalDateTime deletedAt; // Timestamp when the account was deleted (if applicable)
+    private OffsetDateTime deletedAt; // Timestamp when the account was deleted (if applicable)
 }

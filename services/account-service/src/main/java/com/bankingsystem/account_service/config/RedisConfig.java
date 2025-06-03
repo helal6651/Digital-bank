@@ -1,4 +1,4 @@
-package com.bankingsystem.account_service.confiq;
+package com.bankingsystem.account_service.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,7 +10,10 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.List;
 @Configuration
 public class RedisConfig {
    @Bean
@@ -34,5 +37,17 @@ public class RedisConfig {
       objectMapper.registerModule(new JavaTimeModule());
       template.setValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper));
       return template;
+   }
+   @Bean
+   public CorsConfigurationSource corsConfigurationSource() {
+      CorsConfiguration configuration = new CorsConfiguration();
+      configuration.setAllowedOriginPatterns(List.of("*")); // Allow all origins
+      configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")); // Allowed methods
+      configuration.setAllowedHeaders(List.of("*")); // Allow all headers
+      configuration.setAllowCredentials(false); // Disable credentials (if needed)
+
+      UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+      source.registerCorsConfiguration("/**", configuration); // Apply to all paths
+      return source;
    }
 }
