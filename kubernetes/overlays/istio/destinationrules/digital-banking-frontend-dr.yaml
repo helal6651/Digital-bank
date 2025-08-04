@@ -1,0 +1,21 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: digital-banking-frontend-dr
+  namespace: digital-bank
+spec:
+  host: digital-banking-frontend
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    connectionPool:
+      tcp:
+        maxConnections: 10
+      http:
+        http1MaxPendingRequests: 10
+        maxRequestsPerConnection: 2
+  subsets:
+    - name: v1
+      labels:
+        app: digital-banking-frontend
+        version: v1
