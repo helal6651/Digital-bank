@@ -118,3 +118,30 @@ kubectl apply -k overlays/prod
 kind delete cluster
 
    ```
+# Install Istio
+istioctl install --set values.defaultRevision=default -y
+
+# Deploy using the new Istio overlay
+kubectl apply -k kubernetes/overlays/istio/
+
+# Verify namespace has sidecar injection enabled
+kubectl get namespace digital-bank --show-labels
+
+# Check that pods now have 2 containers (app + istio-proxy)
+kubectl get pods -n digital-bank
+
+# Install Istio addons
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/prometheus.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/grafana.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/jaeger.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/kiali.yaml
+
+
+# Port forward for local access
+kubectl port-forward svc/istio-ingressgateway -n istio-system 8080:80
+
+# Access Kiali dashboard
+kubectl port-forward svc/kiali -n istio-system 20001:20001
+
+# Access Grafana
+kubectl port-forward svc/grafana -n istio-system 3000:3000

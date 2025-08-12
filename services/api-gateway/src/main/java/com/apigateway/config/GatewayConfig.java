@@ -20,11 +20,10 @@ public class GatewayConfig {
     public RouteLocator routes(RouteLocatorBuilder builder) {
         log.info("Configuring routes for the API Gateway");
         return builder.routes()
-                .route("user-service", r -> r.path("/v1/api/**")
+                // User Service routes
+                .route("user-service", r -> r.path("/v1/api/user/**")
                         .filters(f -> f.filter(filter))
-                        .uri("lb://user-service"))
-            /*    .route("auth-service", r -> r.path("/v1/auth/**")
-                        .uri("lb://auth-service"))*/
+                        .uri("http://user-service:9491"))
                 .build();
     }
 }

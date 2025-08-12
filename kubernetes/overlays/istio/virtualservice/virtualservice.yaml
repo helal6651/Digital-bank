@@ -1,0 +1,75 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: digital-bank-vs
+  namespace: digital-bank
+spec:
+  hosts:
+    - '*'
+  gateways:
+    - digital-bank-gateway
+  http:
+    # API routes (must come BEFORE frontend routes)
+    # Authentication routes
+    - match:
+        - uri:
+            exact: /v1/api/authenticate
+      route:
+        - destination:
+            host: user-service
+            port:
+              number: 9491
+    - match:
+        - uri:
+            exact: /v1/api/renewToken
+      route:
+        - destination:
+            host: user-service
+            port:
+              number: 9491
+    - match:
+        - uri:
+            prefix: /v1/api/user/
+      route:
+        - destination:
+            host: user-service
+            port:
+              number: 9491
+    - match:
+        - uri:
+            prefix: /v1/api/account/
+      route:
+        - destination:
+            host: account-service
+            port:
+              number: 9492
+    - match:
+        - uri:
+            prefix: /v1/api/notification/
+      route:
+        - destination:
+            host: notification-service
+            port:
+              number: 9493
+    - match:
+        - uri:
+            prefix: /v1/api/
+      route:
+        - destination:
+            host: api-gateway
+            port:
+              number: 9490
+    # Frontend routes (must come AFTER API routes)
+    - match:
+        - uri:
+            prefix: /
+        - uri:
+            prefix: /static/
+        - uri:
+            prefix: /assets/
+      route:
+        - destination:
+            host: digital-banking-frontend
+            port:
+              number: 80
+            subset: v1

@@ -1,0 +1,21 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: notification-service-dr
+  namespace: digital-bank
+spec:
+  host: notification-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 5
+      http:
+        http1MaxPendingRequests: 5
+        maxRequestsPerConnection: 2
+    circuitBreaker:
+      consecutiveGatewayErrors: 2
+      interval: 20s
+      baseEjectionTime: 20s
+      maxEjectionPercent: 30
+    loadBalancer:
+      simple: RANDOM

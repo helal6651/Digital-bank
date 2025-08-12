@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Include your existing prod overlay as base
+resources:
+  - ../prod
+  - gateway/gateway.yaml
+  - virtualservice/virtualservice.yaml
+  - destinationrules/
+
+# Add Istio sidecar injection to namespace
+patchesStrategicMerge:
+  - namespace-patch.yaml
+  - frontend-version-patch.yaml
+
+namespace: digital-bank
