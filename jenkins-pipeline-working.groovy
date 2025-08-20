@@ -151,26 +151,44 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                             export PATH=$HOME/bin:$PATH
                         fi
                         
-                        # Use Jenkins kubeconfig credential with debugging
+                        # Use Jenkins kubeconfig credential with format detection
                         echo "🔧 Setting up kubeconfig from Jenkins credential..."
-                        echo "📋 Debugging kubeconfig content..."
-                        echo "First 200 characters of KUBECONFIG:"
-                        echo "$KUBECONFIG" | head -c 200
-                        echo ""
-                        echo "Checking if it's base64 encoded..."
                         
-                        # Try to decode if it's base64
-                        if echo "$KUBECONFIG" | base64 -d > /dev/null 2>&1; then
-                            echo "✅ Detected base64 encoding, decoding..."
-                            echo "$KUBECONFIG" | base64 -d > kubeconfig
+                        # Save credential to temp file
+                        echo "$KUBECONFIG" > kubeconfig_raw
+                        
+                        # Check if it's valid YAML format
+                        if grep -q "apiVersion:" kubeconfig_raw && grep -q "kind:" kubeconfig_raw; then
+                            echo "✅ Valid YAML kubeconfig detected"
+                            cp kubeconfig_raw kubeconfig
                         else
-                            echo "📝 Not base64 encoded, using as-is..."
-                            echo "$KUBECONFIG" > kubeconfig
+                            echo "⚠️ Invalid or non-YAML kubeconfig format detected"
+                            echo "🔧 Creating fallback kubeconfig for local KIND cluster..."
+                            
+                            # Install KIND for fallback
+                            if ! command -v kind &> /dev/null; then
+                                echo "📥 Installing KIND..."
+                                curl -Lo kind "https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64"
+                                chmod +x kind
+                                mkdir -p $HOME/bin
+                                mv kind $HOME/bin/
+                                export PATH=$HOME/bin:$PATH
+                            fi
+                            
+                            # Create or use existing KIND cluster
+                            if ! kind get clusters | grep -q "digital-bank"; then
+                                echo "🆕 Creating KIND cluster 'digital-bank'..."
+                                kind create cluster --name=digital-bank
+                            else
+                                echo "✅ Using existing KIND cluster 'digital-bank'"
+                            fi
+                            
+                            # Get kubeconfig from KIND
+                            kind get kubeconfig --name=digital-bank > kubeconfig
                         fi
                         
-                        echo "📄 Final kubeconfig content (first 300 chars):"
-                        head -c 300 kubeconfig
-                        echo ""
+                        # Clean up temp file
+                        rm -f kubeconfig_raw
                         
                         export KUBECONFIG=${PWD}/kubeconfig
                         
