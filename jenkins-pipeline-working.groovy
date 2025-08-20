@@ -151,9 +151,27 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                             export PATH=$HOME/bin:$PATH
                         fi
                         
-                        # Use Jenkins kubeconfig credential
+                        # Use Jenkins kubeconfig credential with debugging
                         echo "🔧 Setting up kubeconfig from Jenkins credential..."
-                        echo "$KUBECONFIG" > kubeconfig
+                        echo "📋 Debugging kubeconfig content..."
+                        echo "First 200 characters of KUBECONFIG:"
+                        echo "$KUBECONFIG" | head -c 200
+                        echo ""
+                        echo "Checking if it's base64 encoded..."
+                        
+                        # Try to decode if it's base64
+                        if echo "$KUBECONFIG" | base64 -d > /dev/null 2>&1; then
+                            echo "✅ Detected base64 encoding, decoding..."
+                            echo "$KUBECONFIG" | base64 -d > kubeconfig
+                        else
+                            echo "📝 Not base64 encoded, using as-is..."
+                            echo "$KUBECONFIG" > kubeconfig
+                        fi
+                        
+                        echo "📄 Final kubeconfig content (first 300 chars):"
+                        head -c 300 kubeconfig
+                        echo ""
+                        
                         export KUBECONFIG=${PWD}/kubeconfig
                         
                         # Verify kubectl connection
