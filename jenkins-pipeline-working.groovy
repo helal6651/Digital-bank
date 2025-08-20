@@ -140,8 +140,8 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                 script {
                     echo '🚀 Deploying to KIND cluster...'
                     
-                    // Save kubeconfig to a file
-                    writeFile file: 'kubeconfig', encoding: 'Base64', text: env.KUBECONFIG
+                    // Save kubeconfig to a file (remove Base64 encoding as it's already handled by Jenkins)
+                    writeFile file: 'kubeconfig', text: env.KUBECONFIG
                     
                     sh '''
                         export KUBECONFIG=${PWD}/kubeconfig
