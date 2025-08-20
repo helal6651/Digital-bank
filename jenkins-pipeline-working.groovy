@@ -42,12 +42,6 @@ pipeline {
                             dir('services') {
                                 sh './gradlew :user-service:clean'
                                 sh './gradlew :user-service:build -x test'
-                                writeFile file: 'user-service/Dockerfile', text: '''
-FROM openjdk:17-jdk-slim
-COPY build/libs/user-service-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "/app.jar"]
-'''
                                 echo '✅ User service built successfully'
                             }
                         }
@@ -61,12 +55,6 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]
                             dir('services/account-service') {
                                 sh 'chmod +x ./mvnw'
                                 sh './mvnw clean package -DskipTests'
-                                writeFile file: 'Dockerfile', text: '''
-FROM openjdk:17-jdk-slim
-COPY target/account-service-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8082
-ENTRYPOINT ["java", "-jar", "/app.jar"]
-'''
                                 echo '✅ Account service built successfully'
                             }
                         }
