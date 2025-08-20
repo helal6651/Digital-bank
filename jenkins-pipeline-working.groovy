@@ -135,10 +135,10 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
             }
         }
         
-        stage('Deploy to Existing KIND Cluster') {
+        stage('Deploy to KIND Cluster') {
             steps {
                 script {
-                    echo '🚀 Deploying to existing KIND cluster...'
+                    echo '🚀 Deploying to KIND cluster...'
                     
                     sh '''
                         # Install kubectl if not present (without sudo)
@@ -154,41 +154,87 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                         # Use Jenkins kubeconfig credential for existing KIND cluster
                         echo "🔧 Setting up kubeconfig from Jenkins credential..."
                         
-                        # Handle different credential formats (file content vs string)
-                        if [[ "$KUBECONFIG" == *"apiVersion:"* ]]; then
-                            echo "✅ Direct YAML kubeconfig detected"
-                            echo "$KUBECONFIG" > kubeconfig
-                        else
-                            echo "📋 Credential appears to be file reference, copying content..."
-                            # If it's a file reference, copy the content
-                            if [[ -f "$KUBECONFIG" ]]; then
-                                cp "$KUBECONFIG" kubeconfig
-                            else
-                                echo "⚠️ Credential format not recognized, treating as YAML content..."
-                                echo "$KUBECONFIG" > kubeconfig
-                            fi
-                        fi
-                        
-                        # Verify the kubeconfig is valid YAML
-                        echo "🔍 Verifying kubeconfig format..."
-                        if grep -q "apiVersion:" kubeconfig && grep -q "kind:" kubeconfig; then
-                            echo "✅ Valid YAML kubeconfig detected"
+                        # Jenkins credential should be a file, copy it directly
+                        if [[ -f "$KUBECONFIG" ]]; then
+                            echo "✅ Jenkins kubeconfig file found: $KUBECONFIG"
+                            cp "$KUBECONFIG" kubeconfig
+                            echo "📄 Copied kubeconfig file, size: $(wc -c < kubeconfig) bytes"
                             
-                            # Check if KIND cluster context exists
-                            if grep -q "kind-kind" kubeconfig; then
-                                echo "✅ KIND cluster context found in kubeconfig"
+                            # Verify the kubeconfig
+                            echo "🔍 Verifying kubeconfig format..."
+                            if grep -q "apiVersion:" kubeconfig && grep -q "kind:" kubeconfig; then
+                                echo "✅ Valid YAML kubeconfig detected"
+                                
+                                # Check if KIND cluster context exists
+                                if grep -q "kind-kind" kubeconfig; then
+                                    echo "✅ KIND cluster context found in kubeconfig"
+                                    export KUBECONFIG=${PWD}/kubeconfig
+                                    kubectl config use-context kind-kind
+                                    echo "✅ Successfully switched to kind-kind context"
+                                    KUBECONFIG_VALID=true
+                                else
+                                    echo "⚠️ No KIND cluster context found, checking available contexts..."
+                                    export KUBECONFIG=${PWD}/kubeconfig
+                                    kubectl config get-contexts
+                                    KUBECONFIG_VALID=false
+                                fi
                             else
-                                echo "⚠️ No KIND cluster context found, will use default context"
+                                echo "❌ Invalid kubeconfig format from Jenkins credential"
+                                echo "� First 300 characters of kubeconfig:"
+                                head -c 300 kubeconfig
+                                echo ""
+                                KUBECONFIG_VALID=false
                             fi
                         else
-                            echo "❌ Invalid kubeconfig format detected"
-                            echo "📋 Kubeconfig content (first 500 chars):"
-                            head -c 500 kubeconfig
-                            echo ""
-                            echo "Please ensure your Jenkins kubectl-config credential contains valid YAML kubeconfig content"
-                            exit 1
+                            echo "❌ Jenkins kubeconfig credential is not a file: $KUBECONFIG"
+                            echo "📋 Please ensure kubectl-config is uploaded as 'Secret file' type in Jenkins"
+                            KUBECONFIG_VALID=false
                         fi
                         
+                        # Fallback: Try to get kubeconfig from existing KIND cluster
+                        if [[ "$KUBECONFIG_VALID" != "true" ]]; then
+                            echo "🔧 Fallback: Getting kubeconfig from existing KIND cluster..."
+                            
+                            # Install KIND if not available
+                            if ! command -v kind &> /dev/null; then
+                                echo "📥 Installing KIND..."
+                                curl -Lo kind "https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64"
+                                chmod +x kind
+                                mkdir -p $HOME/bin
+                                mv kind $HOME/bin/
+                                export PATH=$HOME/bin:$PATH
+                            fi
+                            
+                            # List available KIND clusters
+                            echo "📋 Checking for existing KIND clusters..."
+                            if CLUSTERS=$(kind get clusters 2>/dev/null) && [[ -n "$CLUSTERS" ]]; then
+                                echo "Available clusters: $CLUSTERS"
+                                
+                                # Try to find your cluster (try common names)
+                                for cluster_name in "kind" "digital-bank" "default"; do
+                                    if echo "$CLUSTERS" | grep -q "^${cluster_name}$"; then
+                                        echo "✅ Found KIND cluster: $cluster_name"
+                                        kind get kubeconfig --name="$cluster_name" > kubeconfig
+                                        export KUBECONFIG=${PWD}/kubeconfig
+                                        echo "✅ Using KIND cluster: $cluster_name"
+                                        break
+                                    fi
+                                done
+                                
+                                # If no specific cluster found, use the first available
+                                if ! kubectl cluster-info &>/dev/null; then
+                                    FIRST_CLUSTER=$(echo "$CLUSTERS" | head -n1)
+                                    echo "✅ Using first available cluster: $FIRST_CLUSTER"
+                                    kind get kubeconfig --name="$FIRST_CLUSTER" > kubeconfig
+                                    export KUBECONFIG=${PWD}/kubeconfig
+                                fi
+                            else
+                                echo "❌ No KIND clusters found"
+                                echo "📋 Please ensure your KIND cluster is running in Docker Desktop"
+                                exit 1
+                            fi
+                        
+                        # Set the kubeconfig environment variable
                         export KUBECONFIG=${PWD}/kubeconfig
                         
                         # Set context to KIND cluster if available
