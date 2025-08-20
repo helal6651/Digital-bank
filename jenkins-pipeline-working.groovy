@@ -140,9 +140,6 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                 script {
                     echo '🚀 Deploying to KIND cluster...'
                     
-                    // Save kubeconfig to a file (remove Base64 encoding as it's already handled by Jenkins)
-                    writeFile file: 'kubeconfig', text: env.KUBECONFIG
-                    
                     sh '''
                         # Install kubectl if not present (without sudo)
                         if ! command -v kubectl &> /dev/null; then
@@ -154,12 +151,20 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                             export PATH=$HOME/bin:$PATH
                         fi
                         
+                        # Use Jenkins kubeconfig credential
+                        echo "🔧 Setting up kubeconfig from Jenkins credential..."
+                        echo "$KUBECONFIG" > kubeconfig
                         export KUBECONFIG=${PWD}/kubeconfig
+                        
+                        # Verify kubectl connection
+                        echo "🔍 Verifying kubectl connection..."
+                        kubectl cluster-info
                         
                         # Navigate to prod overlay
                         cd kubernetes/overlays/prod
                         
                         # Apply the configurations
+                        echo "🚀 Applying Kubernetes configurations..."
                         kubectl apply -k .
                         
                         # Wait for pods to be ready
@@ -167,6 +172,7 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                         kubectl wait --for=condition=ready pod --all -n digital-bank --timeout=300s || true
                         
                         # Show deployment status
+                        echo "📊 Deployment Status:"
                         kubectl get pods -n digital-bank
                         kubectl get services -n digital-bank
                     '''
@@ -191,6 +197,7 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                             export PATH=$HOME/bin:$PATH
                         fi
                         
+                        # Use the kubeconfig created in deployment stage
                         export KUBECONFIG=${PWD}/kubeconfig
                         
                         echo "📊 Deployment Status:"
@@ -224,6 +231,7 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                             export PATH=$HOME/bin:$PATH
                         fi
                         
+                        # Use the kubeconfig created in deployment stage
                         export KUBECONFIG=${PWD}/kubeconfig
                         
                         echo "=== 🌐 SERVICE ACCESS INFORMATION ==="
