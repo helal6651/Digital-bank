@@ -144,6 +144,16 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                     writeFile file: 'kubeconfig', text: env.KUBECONFIG
                     
                     sh '''
+                        # Install kubectl if not present (without sudo)
+                        if ! command -v kubectl &> /dev/null; then
+                            echo "📥 Installing kubectl..."
+                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                            chmod +x kubectl
+                            mkdir -p $HOME/bin
+                            mv kubectl $HOME/bin/
+                            export PATH=$HOME/bin:$PATH
+                        fi
+                        
                         export KUBECONFIG=${PWD}/kubeconfig
                         
                         # Navigate to prod overlay
@@ -171,6 +181,16 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                 script {
                     echo '🔍 Verifying deployment...'
                     sh '''
+                        # Ensure kubectl is available
+                        if ! command -v kubectl &> /dev/null; then
+                            echo "📥 Installing kubectl..."
+                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                            chmod +x kubectl
+                            mkdir -p $HOME/bin
+                            mv kubectl $HOME/bin/
+                            export PATH=$HOME/bin:$PATH
+                        fi
+                        
                         export KUBECONFIG=${PWD}/kubeconfig
                         
                         echo "📊 Deployment Status:"
@@ -194,6 +214,16 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                 script {
                     echo '📋 Service Access Information'
                     sh '''
+                        # Ensure kubectl is available
+                        if ! command -v kubectl &> /dev/null; then
+                            echo "📥 Installing kubectl..."
+                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                            chmod +x kubectl
+                            mkdir -p $HOME/bin
+                            mv kubectl $HOME/bin/
+                            export PATH=$HOME/bin:$PATH
+                        fi
+                        
                         export KUBECONFIG=${PWD}/kubeconfig
                         
                         echo "=== 🌐 SERVICE ACCESS INFORMATION ==="
