@@ -18,7 +18,7 @@ pipeline {
     
     // Trigger configuration
             success {
-            echo '✅ SUCCESS: AUTO-TRIGGERED deployment completed successfully!'
+            echo '📋 REQUIRED MANUAL STEPS TO ACCESS:'           echo '✅ SUCCESS: AUTO-TRIGGERED deployment completed successfully!'
             echo '🔄 Triggered by GitHub commit push'
             echo "👤 Author: ${env.GIT_AUTHOR ?: 'Unknown'}"
             echo "💬 Commit: ${env.GIT_MESSAGE ?: 'No message'}"
