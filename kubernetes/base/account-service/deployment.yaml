@@ -24,6 +24,7 @@ spec:
       containers:
         - name: account-service
           image: bjitpdmad/account-service:latest # Replace this with your actual image
+          imagePullPolicy: Always
           ports:
             - containerPort: 9492               # The port your service listens on
           env:

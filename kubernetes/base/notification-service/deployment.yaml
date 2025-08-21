@@ -17,6 +17,7 @@ spec:
       containers:
         - name: notification-service
           image: bjitpdmad/notification-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 9496
           env:

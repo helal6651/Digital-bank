@@ -17,6 +17,7 @@ spec:
       containers:
         - name: user-service
           image: bjitpdmad/user-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 9491
           env:

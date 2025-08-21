@@ -17,5 +17,6 @@ spec:
       containers:
         - name: digital-banking-frontend
           image: bjitpdmad/db-frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80

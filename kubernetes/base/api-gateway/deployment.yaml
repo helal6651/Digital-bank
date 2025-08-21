@@ -17,6 +17,7 @@ spec:
       containers:
         - name: api-gateway
           image: bjitpdmad/api-gateway:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 9490
           env:
