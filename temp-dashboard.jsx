@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from "react";
 import { Navbar, Footer } from "../components/layout";
 import CreateAccountSection from "../components/dashboard/CreateAccountSection";
@@ -9,11 +9,11 @@ import axios from "axios";
 const userList = [
   {
     id: 2,
-
-    name: "Jane Smith",
-
+<<<<<<< HEAD
+    name: "Jane SmithhhHel36",
+=======
     name: "Jane SmithHel36",
-
+>>>>>>> 1c863e808d239a10b0d9fca0c32830c833b44014
     email: "jane.smith@example.com",
     phone: "+9876543210",
     hasAccount: false,

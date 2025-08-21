@@ -51,13 +51,17 @@ pipeline {
                 script {
                     echo 'Cleaning Docker environment...'
                     sh '''
-                        # Stop and remove existing containers (ignore errors if no compose)
-                        docker-compose -f docker/docker-compose.yaml down --remove-orphans 2>/dev/null || echo "No existing docker-compose services to stop"
+                        # Stop and remove existing containers
+                        docker-compose -f docker/docker-compose.yaml down --remove-orphans || true
                         
                         # Clean up dangling images and unused containers
                         docker system prune -f || true
                         
-                        echo "Docker cleanup completed"
+                        # Remove old images of our services (keep last 3 versions)
+                        for service in user-service account-service notification-service api-gateway frontend; do
+                            echo "Cleaning old images for $service..."
+                            docker images ${DOCKER_REGISTRY}/$service --format "table {{.Repository}}:{{.Tag}}\\t{{.CreatedAt}}" | grep -v REPOSITORY | tail -n +4 | awk '{print $1}' | xargs -r docker rmi || true
+                        done
                     '''
                 }
             }
@@ -71,16 +75,8 @@ pipeline {
                             script {
                                 echo 'Building User Service...'
                                 sh '''
-                                    # Make gradlew executable
-                                    chmod +x ./gradlew || echo "chmod not available, trying direct execution"
-                                    
                                     echo "Building user-service JAR..."
-                                    if [ -f "./gradlew" ]; then
-                                        ./gradlew clean build -x test
-                                    else
-                                        echo "Gradlew not found, using gradle command"
-                                        gradle clean build -x test
-                                    fi
+                                    ./gradlew clean build -x test
                                     
                                     echo "Building user-service Docker image..."
                                     docker build -t ${DOCKER_REGISTRY}/user-service:${BUILD_NUMBER} .
@@ -97,20 +93,8 @@ pipeline {
                             script {
                                 echo 'Building Account Service...'
                                 sh '''
-                                    # Make mvnw executable if available
-                                    chmod +x ./mvnw 2>/dev/null || echo "chmod not available"
-                                    
                                     echo "Building account-service JAR..."
-                                    if [ -f "./mvnw" ]; then
-                                        ./mvnw clean package -DskipTests
-                                    elif command -v mvn >/dev/null 2>&1; then
-                                        mvn clean package -DskipTests
-                                    else
-                                        echo "Neither mvnw nor mvn found, skipping Java build"
-                                        echo "Creating dummy JAR for Docker build"
-                                        mkdir -p target
-                                        touch target/account-service-1.0.jar
-                                    fi
+                                    mvn clean package -DskipTests
                                     
                                     echo "Building account-service Docker image..."
                                     docker build -t ${DOCKER_REGISTRY}/account-service:${BUILD_NUMBER} .
@@ -127,16 +111,8 @@ pipeline {
                             script {
                                 echo 'Building Notification Service...'
                                 sh '''
-                                    # Make gradlew executable
-                                    chmod +x ./gradlew || echo "chmod not available, trying direct execution"
-                                    
                                     echo "Building notification-service JAR..."
-                                    if [ -f "./gradlew" ]; then
-                                        ./gradlew clean build -x test
-                                    else
-                                        echo "Gradlew not found, using gradle command"
-                                        gradle clean build -x test
-                                    fi
+                                    ./gradlew clean build -x test
                                     
                                     echo "Building notification-service Docker image..."
                                     docker build -t ${DOCKER_REGISTRY}/notification-service:${BUILD_NUMBER} .
@@ -153,20 +129,8 @@ pipeline {
                             script {
                                 echo 'Building API Gateway...'
                                 sh '''
-                                    # Make mvnw executable if available
-                                    chmod +x ./mvnw 2>/dev/null || echo "chmod not available"
-                                    
                                     echo "Building api-gateway JAR..."
-                                    if [ -f "./mvnw" ]; then
-                                        ./mvnw clean package -DskipTests
-                                    elif command -v mvn >/dev/null 2>&1; then
-                                        mvn clean package -DskipTests
-                                    else
-                                        echo "Neither mvnw nor mvn found, skipping Java build"
-                                        echo "Creating dummy JAR for Docker build"
-                                        mkdir -p target
-                                        touch target/api-gateway-1.0.jar
-                                    fi
+                                    mvn clean package -DskipTests
                                     
                                     echo "Building api-gateway Docker image..."
                                     docker build -t ${DOCKER_REGISTRY}/api-gateway:${BUILD_NUMBER} .
