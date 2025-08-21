@@ -12,7 +12,7 @@ pipeline {
     triggers {
         // Poll SCM every 2 minutes as backup trigger
         pollSCM('H/2 * * * *')
-        // GitHub webhook trigger (requires GitHub plugin)
+        // GitHub webhook trigger for instant builds
         githubPush()
     }
     
@@ -121,62 +121,6 @@ pipeline {
                     }
                 }
                 
-                stage('Build Notification Service') {
-                    steps {
-                        dir('services/notification-service') {
-                            script {
-                                echo 'Building Notification Service...'
-                                sh '''
-                                    # Make gradlew executable
-                                    chmod +x ./gradlew || echo "chmod not available, trying direct execution"
-                                    
-                                    echo "Building notification-service JAR..."
-                                    if [ -f "./gradlew" ]; then
-                                        ./gradlew clean build -x test
-                                    else
-                                        echo "Gradlew not found, using gradle command"
-                                        gradle clean build -x test
-                                    fi
-                                    
-                                    echo "Building notification-service Docker image..."
-                                    docker build -t ${DOCKER_REGISTRY}/notification-service:${BUILD_NUMBER} .
-                                    docker tag ${DOCKER_REGISTRY}/notification-service:${BUILD_NUMBER} ${DOCKER_REGISTRY}/notification-service:latest
-                                '''
-                            }
-                        }
-                    }
-                }
-                
-                stage('Build API Gateway') {
-                    steps {
-                        dir('services/api-gateway') {
-                            script {
-                                echo 'Building API Gateway...'
-                                sh '''
-                                    # Make mvnw executable if available
-                                    chmod +x ./mvnw 2>/dev/null || echo "chmod not available"
-                                    
-                                    echo "Building api-gateway JAR..."
-                                    if [ -f "./mvnw" ]; then
-                                        ./mvnw clean package -DskipTests
-                                    elif command -v mvn >/dev/null 2>&1; then
-                                        mvn clean package -DskipTests
-                                    else
-                                        echo "Neither mvnw nor mvn found, skipping Java build"
-                                        echo "Creating dummy JAR for Docker build"
-                                        mkdir -p target
-                                        touch target/api-gateway-1.0.jar
-                                    fi
-                                    
-                                    echo "Building api-gateway Docker image..."
-                                    docker build -t ${DOCKER_REGISTRY}/api-gateway:${BUILD_NUMBER} .
-                                    docker tag ${DOCKER_REGISTRY}/api-gateway:${BUILD_NUMBER} ${DOCKER_REGISTRY}/api-gateway:latest
-                                '''
-                            }
-                        }
-                    }
-                }
-                
                 stage('Build Frontend') {
                     steps {
                         dir('frontend') {
@@ -194,88 +138,168 @@ pipeline {
             }
         }
         
-        stage('Deploy to Development') {
+        // --- Begin Kubernetes-related stages ---
+        stage('Setup Tools') {
             steps {
                 script {
-                    echo 'Deploying to development environment...'
+                    echo "🛠️ Setting up kubectl and tools..."
                     sh '''
-                        # Update docker-compose with new build number
-                        export DOCKER_TAG=${BUILD_NUMBER}
-                        
-                        echo "Starting services with docker-compose..."
-                        cd docker
-                        docker-compose up -d
-                        
-                        echo "Waiting for services to be ready..."
-                        sleep 30
-                        
-                        echo "Checking service health..."
-                        docker-compose ps
+                        # Download kubectl to workspace directory
+                        echo "📥 Installing kubectl ${KUBECTL_VERSION}..."
+                        curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+                        chmod +x kubectl
+                        # Verify kubectl is working
+                        ./kubectl version --client=true
+                        echo "✅ kubectl setup completed"
                     '''
                 }
             }
         }
-        
-        stage('Health Check') {
+        stage('Test Kubernetes Connection') {
             steps {
-                script {
-                    echo 'Performing health checks...'
-                    sh '''
-                        echo "Checking service connectivity..."
-                        
-                        # Check if containers are running
-                        cd docker
-                        if ! docker-compose ps | grep -q "Up"; then
-                            echo "Error: Some services are not running"
-                            docker-compose logs
-                            exit 1
-                        fi
-                        
-                        echo "All services are running successfully!"
-                        
-                        # Display running services
-                        echo "Current service status:"
-                        docker-compose ps
-                    '''
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "🧪 Testing Kubernetes connection..."
+                        sh '''
+                            echo "🔧 Setting up kubeconfig from Jenkins credential..."
+                            rm -f kubeconfig kubeconfig_clean
+                            cp "$KUBECONFIG" kubeconfig
+                            echo "📋 Original kubeconfig file info:"
+                            file kubeconfig || echo "file command not available"
+                            wc -l kubeconfig
+                            echo "First few lines:"
+                            head -n 5 kubeconfig
+                            echo "Last few lines:"
+                            tail -n 5 kubeconfig
+                            tr -d '\r\0' < kubeconfig > kubeconfig_clean
+                            mv kubeconfig_clean kubeconfig
+                            echo "📋 After cleaning:"
+                            wc -l kubeconfig
+                            echo "First few lines after cleaning:"
+                            head -n 5 kubeconfig
+                            echo "🔍 Checking kubeconfig structure..."
+                            if grep -q "apiVersion:" kubeconfig && grep -q "clusters:" kubeconfig && grep -q "contexts:" kubeconfig; then
+                                echo "✅ Valid kubeconfig structure detected"
+                            else
+                                echo "❌ Invalid kubeconfig structure, showing file content for debugging:"
+                                cat kubeconfig
+                                exit 1
+                            fi
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            if ./kubectl config get-contexts | grep -q "kind-kind"; then
+                                echo "✅ KIND cluster context found, switching to kind-kind"
+                                ./kubectl config use-context kind-kind
+                            else
+                                echo "⚠️ KIND cluster context not found, using current context"
+                                ./kubectl config current-context
+                            fi
+                            echo "🔍 Verifying kubectl connection..."
+                            ./kubectl cluster-info
+                            echo "🎯 Testing basic kubectl commands..."
+                            ./kubectl get nodes
+                            ./kubectl get namespaces
+                            echo "✅ Kubernetes connection test completed"
+                        '''
+                    }
                 }
             }
         }
-        
-        stage('Setup Port Forwarding') {
+        stage('Test Namespace Creation') {
             steps {
-                script {
-                    echo 'Setting up port forwarding for development access...'
-                    sh '''
-                        # Create or update dev-helper script
-                        cat > dev-helper.bat << 'EOF'
-@echo off
-if "%1"=="start" (
-    echo Starting port forwarding for Digital Banking services...
-    echo Frontend will be available at: http://localhost:3000
-    echo API Gateway will be available at: http://localhost:8080
-    echo.
-    echo Press Ctrl+C to stop port forwarding
-    start /B kubectl port-forward -n digital-bank svc/digital-banking-frontend 3000:80
-    start /B kubectl port-forward -n digital-bank svc/digital-banking-api-gateway 8080:8080
-    echo Port forwarding started in background
-    pause
-) else if "%1"=="stop" (
-    echo Stopping all port forwarding...
-    taskkill /F /IM kubectl.exe 2>nul
-    echo Port forwarding stopped
-) else (
-    echo Usage: dev-helper.bat [start^|stop]
-    echo   start - Start port forwarding for development
-    echo   stop  - Stop all port forwarding
-)
-EOF
-                        
-                        chmod +x dev-helper.bat
-                        echo "Development helper script created: dev-helper.bat"
-                    '''
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "🏗️ Testing namespace operations..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "🆕 Creating digital-bank namespace..."
+                            if ./kubectl get namespace digital-bank >/dev/null 2>&1; then
+                                echo "✅ digital-bank namespace already exists"
+                            else
+                                ./kubectl create namespace digital-bank
+                                echo "✅ digital-bank namespace created"
+                            fi
+                            echo "📋 Available namespaces:"
+                            ./kubectl get namespaces
+                            echo "✅ Namespace operations test completed"
+                        '''
+                    }
                 }
             }
         }
+        stage('Test Kustomize Files') {
+            steps {
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "📁 Testing Kustomize file validation..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "🔍 Checking Kustomize files in prod overlay..."
+                            cd kubernetes/overlays/prod
+                            ../../../kubectl kustomize . > /tmp/kustomize-output.yaml
+                            echo "📊 Kustomize build successful, generated $(wc -l < /tmp/kustomize-output.yaml) lines"
+                            echo "✅ Kustomize validation completed"
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Deploy to KIND Cluster (Test)') {
+            steps {
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "🚀 Testing deployment to KIND cluster..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "📦 Applying Kubernetes manifests..."
+                            cd kubernetes/overlays/prod
+                            ../../../kubectl apply -k .
+                            echo "✅ Deployment to KIND cluster completed"
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Wait and Check Pod Status') {
+            steps {
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "⏳ Waiting for pods to be ready..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "🔄 Checking pod status..."
+                            ./kubectl get pods -n digital-bank
+                            echo "🔄 Checking service status..."
+                            ./kubectl get services -n digital-bank
+                            echo "🔄 Checking deployment status..."
+                            ./kubectl get deployments -n digital-bank
+                            echo "✅ Status check completed"
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Display Access Information') {
+            steps {
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "📋 Displaying access information..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "=== SERVICE ACCESS INFORMATION ==="
+                            echo "Frontend URL: http://digital-bank.example.com"
+                            echo ""
+                            echo "To access locally, add this to your hosts file:"
+                            echo "127.0.0.1 digital-bank.example.com"
+                            echo ""
+                            echo "Current service endpoints:"
+                            ./kubectl get svc -n digital-bank
+                            echo "✅ Access information displayed"
+                        '''
+                    }
+                }
+            }
+        }
+        // --- End Kubernetes-related stages ---
     }
     
     post {
