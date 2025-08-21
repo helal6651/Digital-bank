@@ -1,7 +1,7 @@
 pipeline {
     agent any
     
-    // Pipeline execution options
+    // Pipeline execution options - Updated to fix syntax issue
     options {
         // Only allow one build at a time (queue management)
         disableConcurrentBuilds()
