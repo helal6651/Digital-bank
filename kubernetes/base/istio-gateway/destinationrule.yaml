@@ -1,0 +1,10 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: digital-banking-frontend
+  namespace: digital-bank
+spec:
+  host: digital-banking-frontend
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN

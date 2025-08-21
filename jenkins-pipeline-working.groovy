@@ -140,7 +140,7 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                 script {
                     echo '🚀 Deploying to KIND cluster...'
                     
-                    sh '''
+                    sh '''#!/bin/bash
                         # Install kubectl if not present (without sudo)
                         if ! command -v kubectl &> /dev/null; then
                             echo "📥 Installing kubectl..."
@@ -155,7 +155,7 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                         echo "🔧 Setting up kubeconfig from Jenkins credential..."
                         
                         # Jenkins credential should be a file, copy it directly
-                        if [[ -f "$KUBECONFIG" ]]; then
+                        if [ -f "$KUBECONFIG" ]; then
                             echo "✅ Jenkins kubeconfig file found: $KUBECONFIG"
                             cp "$KUBECONFIG" kubeconfig
                             echo "📄 Copied kubeconfig file, size: $(wc -c < kubeconfig) bytes"
@@ -192,7 +192,7 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                         fi
                         
                         # Fallback: Try to get kubeconfig from existing KIND cluster
-                        if [[ "$KUBECONFIG_VALID" != "true" ]]; then
+                        if [ "$KUBECONFIG_VALID" != "true" ]; then
                             echo "🔧 Fallback: Getting kubeconfig from existing KIND cluster..."
                             
                             # Install KIND if not available
@@ -207,7 +207,7 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
                             
                             # List available KIND clusters
                             echo "📋 Checking for existing KIND clusters..."
-                            if CLUSTERS=$(kind get clusters 2>/dev/null) && [[ -n "$CLUSTERS" ]]; then
+                            if CLUSTERS=$(kind get clusters 2>/dev/null) && [ -n "$CLUSTERS" ]; then
                                 echo "Available clusters: $CLUSTERS"
                                 
                                 # Try to find your cluster (try common names)

@@ -1,0 +1,35 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: digital-bank-hostname
+  namespace: digital-bank
+spec:
+  hosts:
+  - "digital-bank.example.com"
+  gateways:
+  - digital-bank-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /v1/api/user/
+    route:
+    - destination:
+        host: user-service
+        port:
+          number: 9491
+  - match:
+    - uri:
+        prefix: /v1/api/authenticate
+    route:
+    - destination:
+        host: user-service
+        port:
+          number: 9491
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: digital-banking-frontend
+        port:
+          number: 80

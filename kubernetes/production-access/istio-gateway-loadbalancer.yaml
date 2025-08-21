@@ -1,0 +1,51 @@
+# Production LoadBalancer for Istio Gateway
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-ingressgateway-lb
+  namespace: istio-system
+  labels:
+    app: istio-ingressgateway
+    istio: ingressgateway
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http2
+  - port: 443
+    targetPort: 8443
+    protocol: TCP
+    name: https
+  selector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  # For cloud providers like AWS, Azure, GCP
+  # This will provision an external load balancer
+---
+# Alternative: NodePort for on-premises
+apiVersion: v1
+kind: Service
+metadata:
+  name: istio-ingressgateway-nodeport
+  namespace: istio-system
+  labels:
+    app: istio-ingressgateway
+    istio: ingressgateway
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http2
+    nodePort: 30080  # Accessible via any node IP:30080
+  - port: 443
+    targetPort: 8443
+    protocol: TCP
+    name: https
+    nodePort: 30443
+  selector:
+    app: istio-ingressgateway
+    istio: ingressgateway
