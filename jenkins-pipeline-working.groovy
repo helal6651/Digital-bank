@@ -4,6 +4,8 @@ pipeline {
     environment {
         DOCKER_CREDENTIALS = credentials('docker-credentials')
         KUBECONFIG = credentials('kubectl-config')
+        KUBECTL_VERSION = 'v1.29.4' // or your desired version
+
     }
     
     stages {
@@ -17,109 +19,7 @@ pipeline {
                 }
             }
         }
-        
-        stage('Build Common Service (Dependency)') {
-            steps {
-                script {
-                    echo '🏗️ Building common-service as dependency...'
-                    dir('services') {
-                        sh 'chmod +x ./gradlew'
-                        sh './gradlew :common-service:clean'
-                        sh './gradlew :common-service:build -x test'
-                        sh './gradlew :common-service:publishToMavenLocal'
-                        echo '✅ Common service built and published to local Maven repository'
-                    }
-                }
-            }
-        }
-        
-        stage('Build Services') {
-            parallel {
-                stage('Build User Service') {
-                    steps {
-                        script {
-                            echo '🏗️ Building user-service...'
-                            dir('services') {
-                                sh './gradlew :user-service:clean'
-                                sh './gradlew :user-service:build -x test'
-                                // Ensure Dockerfile exists with correct content
-                                writeFile file: 'user-service/Dockerfile', text: '''FROM openjdk:17-jdk-slim
-COPY build/libs/user-service-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8081
-ENTRYPOINT ["java", "-jar", "/app.jar"]'''
-                                echo '✅ User service built successfully'
-                            }
-                        }
-                    }
-                }
-                
-                stage('Build Account Service') {
-                    steps {
-                        script {
-                            echo '🏗️ Building account-service...'
-                            dir('services/account-service') {
-                                sh 'chmod +x ./mvnw'
-                                sh './mvnw clean package -DskipTests'
-                                // Ensure Dockerfile exists with correct content
-                                writeFile file: 'Dockerfile', text: '''FROM openjdk:17-jdk-slim
-COPY target/account-service-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8082
-ENTRYPOINT ["java", "-jar", "/app.jar"]'''
-                                echo '✅ Account service built successfully'
-                            }
-                        }
-                    }
-                }
-                
-                stage('Build Frontend') {
-                    steps {
-                        script {
-                            echo '🏗️ Building frontend...'
-                            dir('frontend') {
-                                sh 'npm install'
-                                sh 'npm run build'
-                                echo '✅ Frontend built successfully'
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        stage('Build and Push Docker Images') {
-            steps {
-                script {
-                    echo '🐳 Building and pushing Docker images...'
-                    
-                    // Docker login
-                    sh "echo '${DOCKER_CREDENTIALS_PSW}' | docker login -u ${DOCKER_CREDENTIALS_USR} --password-stdin"
-                    
-                    // Build and push user-service
-                    echo '📦 Building user-service Docker image...'
-                    dir('services/user-service') {
-                        sh 'docker build -t bjitpdmad/user-service:latest .'
-                        sh 'docker push bjitpdmad/user-service:latest'
-                    }
-                    
-                    // Build and push account-service
-                    echo '📦 Building account-service Docker image...'
-                    dir('services/account-service') {
-                        sh 'docker build -t bjitpdmad/account-service:latest .'
-                        sh 'docker push bjitpdmad/account-service:latest'
-                    }
-                    
-                    // Build and push frontend
-                    echo '📦 Building frontend Docker image...'
-                    dir('frontend') {
-                        sh 'docker build -t bjitpdmad/db-frontend:latest .'
-                        sh 'docker push bjitpdmad/db-frontend:latest'
-                    }
-                    
-                    sh 'docker logout'
-                    echo '🧹 Docker logout completed'
-                }
-            }
-        }
+
         
         stage('Update Kustomize Image Tags') {
             steps {
