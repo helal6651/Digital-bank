@@ -135,214 +135,168 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]'''
             }
         }
         
-        stage('Deploy to KIND Cluster') {
+        // --- Begin Kubernetes-related stages ---
+        stage('Setup Tools') {
             steps {
                 script {
-                    echo '🚀 Deploying to KIND cluster...'
-                    
-                    sh '''#!/bin/bash
-                        # Install kubectl if not present (without sudo)
-                        if ! command -v kubectl &> /dev/null; then
-                            echo "📥 Installing kubectl..."
-                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                            chmod +x kubectl
-                            mkdir -p $HOME/bin
-                            mv kubectl $HOME/bin/
-                            export PATH=$HOME/bin:$PATH
-                        fi
-                        
-                        # Use Jenkins kubeconfig credential for existing KIND cluster
-                        echo "🔧 Setting up kubeconfig from Jenkins credential..."
-                        
-                        # Jenkins credential should be a file, copy it directly
-                        if [ -f "$KUBECONFIG" ]; then
-                            echo "✅ Jenkins kubeconfig file found: $KUBECONFIG"
+                    echo "🛠️ Setting up kubectl and tools..."
+                    sh '''
+                        # Download kubectl to workspace directory
+                        echo "📥 Installing kubectl ${KUBECTL_VERSION}..."
+                        curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
+                        chmod +x kubectl
+                        # Verify kubectl is working
+                        ./kubectl version --client=true
+                        echo "✅ kubectl setup completed"
+                    '''
+                }
+            }
+        }
+        stage('Test Kubernetes Connection') {
+            steps {
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "🧪 Testing Kubernetes connection..."
+                        sh '''
+                            echo "🔧 Setting up kubeconfig from Jenkins credential..."
+                            rm -f kubeconfig kubeconfig_clean
                             cp "$KUBECONFIG" kubeconfig
-                            echo "📄 Copied kubeconfig file, size: $(wc -c < kubeconfig) bytes"
-                            
-                            # Verify the kubeconfig
-                            echo "🔍 Verifying kubeconfig format..."
-                            if grep -q "apiVersion:" kubeconfig && grep -q "kind:" kubeconfig; then
-                                echo "✅ Valid YAML kubeconfig detected"
-                                
-                                # Check if KIND cluster context exists
-                                if grep -q "kind-kind" kubeconfig; then
-                                    echo "✅ KIND cluster context found in kubeconfig"
-                                    export KUBECONFIG=${PWD}/kubeconfig
-                                    kubectl config use-context kind-kind
-                                    echo "✅ Successfully switched to kind-kind context"
-                                    KUBECONFIG_VALID=true
-                                else
-                                    echo "⚠️ No KIND cluster context found, checking available contexts..."
-                                    export KUBECONFIG=${PWD}/kubeconfig
-                                    kubectl config get-contexts
-                                    KUBECONFIG_VALID=false
-                                fi
+                            echo "📋 Original kubeconfig file info:"
+                            file kubeconfig || echo "file command not available"
+                            wc -l kubeconfig
+                            echo "First few lines:"
+                            head -n 5 kubeconfig
+                            echo "Last few lines:"
+                            tail -n 5 kubeconfig
+                            tr -d '\r\0' < kubeconfig > kubeconfig_clean
+                            mv kubeconfig_clean kubeconfig
+                            echo "📋 After cleaning:"
+                            wc -l kubeconfig
+                            echo "First few lines after cleaning:"
+                            head -n 5 kubeconfig
+                            echo "🔍 Checking kubeconfig structure..."
+                            if grep -q "apiVersion:" kubeconfig && grep -q "clusters:" kubeconfig && grep -q "contexts:" kubeconfig; then
+                                echo "✅ Valid kubeconfig structure detected"
                             else
-                                echo "❌ Invalid kubeconfig format from Jenkins credential"
-                                echo "� First 300 characters of kubeconfig:"
-                                head -c 300 kubeconfig
-                                echo ""
-                                KUBECONFIG_VALID=false
-                            fi
-                        else
-                            echo "❌ Jenkins kubeconfig credential is not a file: $KUBECONFIG"
-                            echo "📋 Please ensure kubectl-config is uploaded as 'Secret file' type in Jenkins"
-                            KUBECONFIG_VALID=false
-                        fi
-                        
-                        # Fallback: Try to get kubeconfig from existing KIND cluster
-                        if [ "$KUBECONFIG_VALID" != "true" ]; then
-                            echo "🔧 Fallback: Getting kubeconfig from existing KIND cluster..."
-                            
-                            # Install KIND if not available
-                            if ! command -v kind &> /dev/null; then
-                                echo "📥 Installing KIND..."
-                                curl -Lo kind "https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64"
-                                chmod +x kind
-                                mkdir -p $HOME/bin
-                                mv kind $HOME/bin/
-                                export PATH=$HOME/bin:$PATH
-                            fi
-                            
-                            # List available KIND clusters
-                            echo "📋 Checking for existing KIND clusters..."
-                            if CLUSTERS=$(kind get clusters 2>/dev/null) && [ -n "$CLUSTERS" ]; then
-                                echo "Available clusters: $CLUSTERS"
-                                
-                                # Try to find your cluster (try common names)
-                                for cluster_name in "kind" "digital-bank" "default"; do
-                                    if echo "$CLUSTERS" | grep -q "^${cluster_name}$"; then
-                                        echo "✅ Found KIND cluster: $cluster_name"
-                                        kind get kubeconfig --name="$cluster_name" > kubeconfig
-                                        export KUBECONFIG=${PWD}/kubeconfig
-                                        echo "✅ Using KIND cluster: $cluster_name"
-                                        break
-                                    fi
-                                done
-                                
-                                # If no specific cluster found, use the first available
-                                if ! kubectl cluster-info &>/dev/null; then
-                                    FIRST_CLUSTER=$(echo "$CLUSTERS" | head -n1)
-                                    echo "✅ Using first available cluster: $FIRST_CLUSTER"
-                                    kind get kubeconfig --name="$FIRST_CLUSTER" > kubeconfig
-                                    export KUBECONFIG=${PWD}/kubeconfig
-                                fi
-                            else
-                                echo "❌ No KIND clusters found"
-                                echo "📋 Please ensure your KIND cluster is running in Docker Desktop"
+                                echo "❌ Invalid kubeconfig structure, showing file content for debugging:"
+                                cat kubeconfig
                                 exit 1
                             fi
-                        
-                        # Set the kubeconfig environment variable
-                        export KUBECONFIG=${PWD}/kubeconfig
-                        
-                        # Set context to KIND cluster if available
-                        if kubectl config get-contexts -o name | grep -q "kind-kind"; then
-                            echo "🎯 Setting context to kind-kind..."
-                            kubectl config use-context kind-kind
-                        else
-                            echo "📋 Available contexts:"
-                            kubectl config get-contexts
-                            echo "🎯 Using current context..."
-                        fi
-                        
-                        # Verify kubectl connection
-                        echo "🔍 Verifying kubectl connection..."
-                        kubectl cluster-info
-                        
-                        # Navigate to prod overlay
-                        cd kubernetes/overlays/prod
-                        
-                        # Apply the configurations
-                        echo "🚀 Applying Kubernetes configurations..."
-                        kubectl apply -k .
-                        
-                        # Wait for pods to be ready
-                        echo "⏳ Waiting for pods to be ready..."
-                        kubectl wait --for=condition=ready pod --all -n digital-bank --timeout=300s || true
-                        
-                        # Show deployment status
-                        echo "📊 Deployment Status:"
-                        kubectl get pods -n digital-bank
-                        kubectl get services -n digital-bank
-                    '''
-                    
-                    echo '✅ Deployment completed'
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            if ./kubectl config get-contexts | grep -q "kind-kind"; then
+                                echo "✅ KIND cluster context found, switching to kind-kind"
+                                ./kubectl config use-context kind-kind
+                            else
+                                echo "⚠️ KIND cluster context not found, using current context"
+                                ./kubectl config current-context
+                            fi
+                            echo "🔍 Verifying kubectl connection..."
+                            ./kubectl cluster-info
+                            echo "🎯 Testing basic kubectl commands..."
+                            ./kubectl get nodes
+                            ./kubectl get namespaces
+                            echo "✅ Kubernetes connection test completed"
+                        '''
+                    }
                 }
             }
         }
-        
-        stage('Verify Deployment') {
+        stage('Test Namespace Creation') {
             steps {
-                script {
-                    echo '🔍 Verifying deployment...'
-                    sh '''
-                        # Ensure kubectl is available
-                        if ! command -v kubectl &> /dev/null; then
-                            echo "📥 Installing kubectl..."
-                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                            chmod +x kubectl
-                            mkdir -p $HOME/bin
-                            mv kubectl $HOME/bin/
-                            export PATH=$HOME/bin:$PATH
-                        fi
-                        
-                        # Use the kubeconfig created in deployment stage
-                        export KUBECONFIG=${PWD}/kubeconfig
-                        
-                        echo "📊 Deployment Status:"
-                        kubectl get deployments -n digital-bank
-                        
-                        echo "🌐 Services:"
-                        kubectl get services -n digital-bank
-                        
-                        echo "🚪 Istio Gateway:"
-                        kubectl get gateway -n digital-bank || echo "No Istio Gateway found"
-                        
-                        echo "🔀 Virtual Services:"
-                        kubectl get virtualservice -n digital-bank || echo "No Virtual Services found"
-                    '''
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "🏗️ Testing namespace operations..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "🆕 Creating digital-bank namespace..."
+                            if ./kubectl get namespace digital-bank >/dev/null 2>&1; then
+                                echo "✅ digital-bank namespace already exists"
+                            else
+                                ./kubectl create namespace digital-bank
+                                echo "✅ digital-bank namespace created"
+                            fi
+                            echo "📋 Available namespaces:"
+                            ./kubectl get namespaces
+                            echo "✅ Namespace operations test completed"
+                        '''
+                    }
                 }
             }
         }
-        
+        stage('Test Kustomize Files') {
+            steps {
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "📁 Testing Kustomize file validation..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "🔍 Checking Kustomize files in prod overlay..."
+                            cd kubernetes/overlays/prod
+                            ../../../kubectl kustomize . > /tmp/kustomize-output.yaml
+                            echo "📊 Kustomize build successful, generated $(wc -l < /tmp/kustomize-output.yaml) lines"
+                            echo "✅ Kustomize validation completed"
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Deploy to KIND Cluster (Test)') {
+            steps {
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "🚀 Testing deployment to KIND cluster..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "📦 Applying Kubernetes manifests..."
+                            cd kubernetes/overlays/prod
+                            ../../../kubectl apply -k .
+                            echo "✅ Deployment to KIND cluster completed"
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Wait and Check Pod Status') {
+            steps {
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "⏳ Waiting for pods to be ready..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "🔄 Checking pod status..."
+                            ./kubectl get pods -n digital-bank
+                            echo "🔄 Checking service status..."
+                            ./kubectl get services -n digital-bank
+                            echo "🔄 Checking deployment status..."
+                            ./kubectl get deployments -n digital-bank
+                            echo "✅ Status check completed"
+                        '''
+                    }
+                }
+            }
+        }
         stage('Display Access Information') {
             steps {
-                script {
-                    echo '📋 Service Access Information'
-                    sh '''
-                        # Ensure kubectl is available
-                        if ! command -v kubectl &> /dev/null; then
-                            echo "📥 Installing kubectl..."
-                            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                            chmod +x kubectl
-                            mkdir -p $HOME/bin
-                            mv kubectl $HOME/bin/
-                            export PATH=$HOME/bin:$PATH
-                        fi
-                        
-                        # Use the kubeconfig created in deployment stage
-                        export KUBECONFIG=${PWD}/kubeconfig
-                        
-                        echo "=== 🌐 SERVICE ACCESS INFORMATION ==="
-                        echo "Frontend URL: http://digital-bank.example.com"
-                        echo ""
-                        echo "📝 To access locally, add this to your hosts file:"
-                        echo "127.0.0.1 digital-bank.example.com"
-                        echo ""
-                        echo "🔍 Current service endpoints:"
-                        kubectl get svc -n digital-bank
-                        
-                        echo ""
-                        echo "🎯 Port forwards for local testing:"
-                        echo "kubectl port-forward svc/front-end-service 3000:80 -n digital-bank"
-                        echo "kubectl port-forward svc/user-service 8081:8081 -n digital-bank"
-                        echo "kubectl port-forward svc/account-service 8082:8082 -n digital-bank"
-                    '''
+                withCredentials([file(credentialsId: 'kubectl-config', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "📋 Displaying access information..."
+                        sh '''
+                            export KUBECONFIG="$(pwd)/kubeconfig"
+                            echo "=== SERVICE ACCESS INFORMATION ==="
+                            echo "Frontend URL: http://digital-bank.example.com"
+                            echo ""
+                            echo "To access locally, add this to your hosts file:"
+                            echo "127.0.0.1 digital-bank.example.com"
+                            echo ""
+                            echo "Current service endpoints:"
+                            ./kubectl get svc -n digital-bank
+                            echo "✅ Access information displayed"
+                        '''
+                    }
                 }
             }
         }
+        // --- End Kubernetes-related stages ---
     }
     
     post {
